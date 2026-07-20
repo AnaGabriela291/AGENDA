@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agenda</title>
-
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -91,7 +90,7 @@
 
   /* =========================================
      BARRA LATERAL DERECHA (DECORACIÓN) 
-     Nuevos ajustes de Responsive Height
+     Ajustada para tamaño manual
      ========================================= */
   .decor-sidebar {
     width: 260px; 
@@ -106,17 +105,14 @@
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 12px 32px rgba(42, 8, 16, 0.08);
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     background: rgba(255,255,255,0.5);
-    /* FLEX 1 permite que se estiren equitativamente dependiendo del alto de la columna */
-    flex: 1; 
-    display: flex; 
+    /* El height se inyecta por JS según lo que elija el usuario */
   }
-  .decor-item-wrap:hover { transform: translateY(-4px); }
+  .decor-item-wrap:hover { box-shadow: 0 16px 40px rgba(42, 8, 16, 0.15); }
   
   .decor-img {
     width: 100%;
-    /* HEIGHT 100% y OBJECT-FIT COVER obligan a la imagen a rellenar el espacio estirado sin deformarse */
     height: 100%;
     display: block;
     object-fit: cover;
@@ -128,10 +124,30 @@
     border: none; width: 32px; height: 32px; border-radius: 50%;
     font-size: 14px; font-weight: bold; cursor: pointer;
     opacity: 0; transition: opacity 0.2s, transform 0.2s;
-    display: grid; place-items: center;
+    display: grid; place-items: center; z-index: 2;
   }
   .decor-item-wrap:hover .btn-delete-decor { opacity: 1; }
   .btn-delete-decor:hover { transform: scale(1.1); background: var(--theme-red); }
+  
+  /* CONTROL DE TAMAÑO (SLIDER) */
+  .decor-resize-ctrl {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, rgba(42, 8, 16, 0.8) 0%, transparent 100%);
+    padding: 24px 16px 12px;
+    opacity: 0; transition: opacity 0.2s;
+    display: flex; flex-direction: column; gap: 4px; z-index: 2;
+  }
+  .decor-item-wrap:hover .decor-resize-ctrl { opacity: 1; }
+  .decor-resize-ctrl label { color: white; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  
+  .decor-resize-ctrl input[type="range"] {
+    appearance: none; width: 100%; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px;
+    outline: none; cursor: pointer; border: none; padding: 0;
+  }
+  .decor-resize-ctrl input[type="range"]::-webkit-slider-thumb {
+    appearance: none; width: 16px; height: 16px; border-radius: 50%; background: white; cursor: pointer; transition: transform 0.1s;
+  }
+  .decor-resize-ctrl input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
   /* TEXTOS Y COMPONENTES */
   h2 { font-size: 28px; font-weight: 800; margin-top: 0; margin-bottom: 32px; letter-spacing: -0.5px; color: var(--vinotinto-dark); }
@@ -324,7 +340,7 @@
             <input type="file" id="decorUploader" accept="image/png, image/jpeg" onchange="uploadDecorImage(this)">
             <div class="file-btn-ui" id="decorUploaderLabel">✨ Subir Imagen Decorativa</div>
           </label>
-          <small style="color: var(--text-muted); margin-left: 12px;">Se estirarán de forma "responsive" dependiendo del largo del contenido.</small>
+          <small style="color: var(--text-muted); margin-left: 12px;">Pasa el mouse sobre la imagen para ajustar su tamaño.</small>
         </div>
       </div>
 
@@ -519,6 +535,11 @@ function setFbStatus(mode, text) {
   if (mode === 'ok') setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
 
+function reportError(err) {
+  console.error(err);
+  alert('No se pudo guardar en Firebase: ' + (err && err.message ? err.message : err));
+}
+
 /* ===================== ESTADO LOCAL EN MEMORIA (espejo de Firestore) ===================== */
 let db = { posts: [], personal: [], finance: [], brands: [], bgImage: '', decorImages: [] };
 let calFiltersState = { personal: true };
@@ -611,16 +632,18 @@ async function setCustomBg() {
       await setDoc(doc(fsDB, 'settings', 'background'), { image: compressed });
       fileInput.value = ''; updateFileLabel(fileInput);
     } catch (err) {
-      alert(err.message);
+      reportError(err);
     }
   }
 }
 
 async function clearCustomBg() {
-  await setDoc(doc(fsDB, 'settings', 'background'), { image: '' });
+  try {
+    await setDoc(doc(fsDB, 'settings', 'background'), { image: '' });
+  } catch (err) { reportError(err); }
 }
 
-/* ===================== PERSONALIZAR: DECORACIÓN DERECHA ===================== */
+/* ===================== PERSONALIZAR: DECORACIÓN DERECHA (con tamaño ajustable) ===================== */
 async function uploadDecorImage(input) {
   if (db.decorImages.length >= 3) {
     alert("Solo puedes tener un máximo de 3 imágenes decorativas activas.");
@@ -630,25 +653,46 @@ async function uploadDecorImage(input) {
   if (input.files && input.files[0]) {
     try {
       const compressed = await compressImage(input.files[0]);
-      await addDoc(collection(fsDB, 'decorImages'), { image: compressed });
+      await addDoc(collection(fsDB, 'decorImages'), { img: compressed, height: 250 });
       input.value = ''; updateFileLabel(input);
     } catch (err) {
-      alert(err.message);
+      reportError(err);
     }
   }
 }
 
 async function deleteDecorImage(id) {
-  await deleteDoc(doc(fsDB, 'decorImages', id));
+  try {
+    await deleteDoc(doc(fsDB, 'decorImages', id));
+  } catch (err) { reportError(err); }
+}
+
+// Actualiza la altura visualmente mientras arrastras el slider (sin escribir en Firestore, para que sea instantáneo)
+function liveUpdateDecorHeight(id, val) {
+  const wrap = document.getElementById(`decor-wrap-${id}`);
+  if (wrap) wrap.style.height = val + 'px';
+}
+
+// Guarda la altura final en Firestore cuando sueltas el slider
+async function saveDecorHeight(id, val) {
+  try {
+    await updateDoc(doc(fsDB, 'decorImages', id), { height: parseInt(val) });
+  } catch (err) { reportError(err); }
 }
 
 function renderDecorSidebar() {
   const sidebar = document.getElementById('decorSidebar');
   if (!sidebar) return;
   sidebar.innerHTML = db.decorImages.map((item) => `
-    <div class="decor-item-wrap">
-      <img src="${item.image}" class="decor-img" alt="Decoración">
+    <div class="decor-item-wrap" id="decor-wrap-${item.id}" style="height: ${item.height || 250}px;">
+      <img src="${item.img}" class="decor-img" alt="Decoración">
       <button class="btn-delete-decor" onclick="deleteDecorImage('${item.id}')" title="Eliminar decoración">✕</button>
+      <div class="decor-resize-ctrl">
+        <label>Tamaño</label>
+        <input type="range" min="100" max="800" value="${item.height || 250}"
+               oninput="liveUpdateDecorHeight('${item.id}', this.value)"
+               onchange="saveDecorHeight('${item.id}', this.value)">
+      </div>
     </div>
   `).join('');
 }
@@ -658,13 +702,17 @@ async function addNewBrand() {
   const name = document.getElementById('newBrandName').value.trim();
   const theme = document.getElementById('newBrandColor').value;
   if(!name) { alert("Escribe un nombre para la marca."); return; }
-  await addDoc(collection(fsDB, 'brands'), { name, theme });
-  document.getElementById('newBrandName').value = '';
+  try {
+    await addDoc(collection(fsDB, 'brands'), { name, theme });
+    document.getElementById('newBrandName').value = '';
+  } catch (err) { reportError(err); }
 }
 
 async function deleteBrand(id) {
   if(confirm('¿Estás seguro de que deseas eliminar esta marca? (Los contenidos/tareas asociados a ella no se borrarán, pero se mostrarán como "Desconocido").')) {
-    await deleteDoc(doc(fsDB, 'brands', id));
+    try {
+      await deleteDoc(doc(fsDB, 'brands', id));
+    } catch (err) { reportError(err); }
   }
 }
 
@@ -710,30 +758,32 @@ async function addPost(){
   if(!brand) { alert('Por favor, crea al menos una marca primero.'); return; }
   if(!title || !date){ alert('Completa fecha y título'); return; }
 
-  let imgData = null;
-  if(imgInput.files && imgInput.files[0]){
-    try {
+  try {
+    let imgData = null;
+    if(imgInput.files && imgInput.files[0]){
       imgData = await compressImage(imgInput.files[0]);
-    } catch (err) {
-      alert(err.message);
-      return;
     }
+    await addDoc(collection(fsDB, 'posts'), {brand, date, title, type, status, img: imgData});
+    document.getElementById('postTitle').value='';
+    imgInput.value = ''; updateFileLabel(imgInput);
+  } catch (err) {
+    reportError(err);
   }
-
-  await addDoc(collection(fsDB, 'posts'), {brand, date, title, type, status, img: imgData});
-  document.getElementById('postTitle').value='';
-  imgInput.value = ''; updateFileLabel(imgInput);
 }
 
 async function deletePost(id){
-  await deleteDoc(doc(fsDB, 'posts', id));
+  try {
+    await deleteDoc(doc(fsDB, 'posts', id));
+  } catch (err) { reportError(err); }
 }
 
 async function changePostStatus(id){
   const order=['Pendiente','En progreso','Aprobado','Publicado'];
   const p = db.posts.find(x=>x.id===id);
   const newStatus = order[(order.indexOf(p.status)+1)%order.length];
-  await updateDoc(doc(fsDB, 'posts', id), { status: newStatus });
+  try {
+    await updateDoc(doc(fsDB, 'posts', id), { status: newStatus });
+  } catch (err) { reportError(err); }
 }
 
 function renderPosts(){
@@ -823,12 +873,16 @@ async function addPersonal(){
   const priority = document.getElementById('persPriority').value;
   
   if(!date || !title){ alert('Completa fecha y título para tu agenda'); return; }
-  await addDoc(collection(fsDB, 'personal'), {date, title, brand, priority, status:'todo'});
-  document.getElementById('persTitle').value='';
+  try {
+    await addDoc(collection(fsDB, 'personal'), {date, title, brand, priority, status:'todo'});
+    document.getElementById('persTitle').value='';
+  } catch (err) { reportError(err); }
 }
 
 async function deletePersonal(id){
-  await deleteDoc(doc(fsDB, 'personal', id));
+  try {
+    await deleteDoc(doc(fsDB, 'personal', id));
+  } catch (err) { reportError(err); }
 }
 
 function drag(ev, id) { ev.dataTransfer.setData("text", id); }
@@ -838,7 +892,9 @@ async function drop(ev, newStatus) {
   const id = ev.dataTransfer.getData("text");
   const task = db.personal.find(t => t.id === id);
   if(task && task.status !== newStatus) {
-    await updateDoc(doc(fsDB, 'personal', id), { status: newStatus });
+    try {
+      await updateDoc(doc(fsDB, 'personal', id), { status: newStatus });
+    } catch (err) { reportError(err); }
   }
 }
 
@@ -878,14 +934,17 @@ async function addFinance(){
   const amount = parseFloat(document.getElementById('finAmount').value);
   
   if(!date || !desc || isNaN(amount)){ alert('Completa todos los campos financieros'); return; }
-  
-  await addDoc(collection(fsDB, 'finance'), {date, type, desc, cur, amount});
-  document.getElementById('finDesc').value='';
-  document.getElementById('finAmount').value='';
+  try {
+    await addDoc(collection(fsDB, 'finance'), {date, type, desc, cur, amount});
+    document.getElementById('finDesc').value='';
+    document.getElementById('finAmount').value='';
+  } catch (err) { reportError(err); }
 }
 
 async function deleteFinance(id){
-  await deleteDoc(doc(fsDB, 'finance', id));
+  try {
+    await deleteDoc(doc(fsDB, 'finance', id));
+  } catch (err) { reportError(err); }
 }
 
 function renderFinance(){
@@ -1027,9 +1086,10 @@ const todayISO = new Date().toISOString().slice(0,10);
   if(document.getElementById(id)) document.getElementById(id).value = todayISO;
 });
 
-/* ===================== EXPONER FUNCIONES PARA LOS onclick/onchange DEL HTML ===================== */
+/* ===================== EXPONER FUNCIONES PARA LOS onclick/onchange/oninput DEL HTML ===================== */
 Object.assign(window, {
   updateFileLabel, setCustomBg, clearCustomBg, uploadDecorImage, deleteDecorImage,
+  liveUpdateDecorHeight, saveDecorHeight,
   addNewBrand, deleteBrand, addPost, deletePost, changePostStatus,
   changeMonth, toggleCalFilter, addPersonal, deletePersonal,
   drag, allowDrop, drop, addFinance, deleteFinance
