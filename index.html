@@ -67,6 +67,29 @@
   }
   .navbtn:hover { background: rgba(255,255,255,0.08); color: white; transform: translateX(4px); }
   .navbtn.active { background: var(--vinotinto-accent); color: white; box-shadow: 0 4px 16px var(--vinotinto-glow); }
+
+  /* NAVEGACIÓN MÓVIL (barra superior + botón hamburguesa + overlay) — ocultos en escritorio */
+  .sidebar-close-btn { display: none; }
+  .mobile-topbar {
+    display: none;
+    align-items: center; gap: 16px;
+    position: fixed; top: 0; left: 0; right: 0; height: 60px;
+    background: linear-gradient(180deg, var(--vinotinto-dark) 0%, var(--vinotinto-main) 100%);
+    color: white; padding: 0 20px; z-index: 100;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .mobile-topbar h1 { font-size: 20px; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .mobile-topbar h1 span { color: #fca5a5; font-weight: 600; }
+  .hamburger-btn {
+    background: rgba(255,255,255,0.12); border: none; color: white; width: 40px; height: 40px;
+    border-radius: 10px; font-size: 18px; cursor: pointer; display: grid; place-items: center; flex-shrink: 0;
+  }
+  .sidebar-overlay {
+    display: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 150;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  }
+  .sidebar-overlay.active { opacity: 1; pointer-events: auto; }
   
   /* CONTENIDO PRINCIPAL Y LAYOUT GLOBAL */
   main { 
@@ -190,6 +213,12 @@
     background: var(--bg-card); padding: 20px; border-radius: 20px; 
     box-shadow: 0 8px 24px rgba(42, 8, 16, 0.03);
   }
+
+  /* Igual que .form-row pero sin fondo/sombra propios — para agrupar campos dentro de una tarjeta que ya tiene su propio fondo */
+  .field-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+
+  /* Layout de 2 columnas para el detalle expandido de un post (copy | hashtags + referencias) */
+  .post-detail-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; }
   
   input, textarea {
     font-family: inherit; font-size: 14px; background: #f4f5f8; border: 1px solid transparent;
@@ -287,11 +316,76 @@
   #fbStatus .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--theme-yellow); }
   #fbStatus.ok .dot { background: var(--theme-green); }
   #fbStatus.error .dot { background: var(--theme-red); }
+
+  /* =========================================
+     RESPONSIVE — TABLET Y MÓVIL
+     ========================================= */
+
+  /* Tablet: la barra decorativa es solo un extra visual, se quita para dar más espacio al contenido */
+  @media (max-width: 1024px) {
+    .decor-sidebar { display: none; }
+  }
+
+  /* Móvil: el menú lateral se convierte en un cajón deslizante activado por una barra superior */
+  @media (max-width: 768px) {
+    .mobile-topbar { display: flex; }
+    .sidebar-overlay { display: block; }
+
+    aside.left-sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      z-index: 200;
+      max-width: 85vw;
+      box-shadow: 8px 0 32px rgba(0,0,0,0.25);
+    }
+    aside.left-sidebar.sidebar-open { transform: translateX(0); }
+    .sidebar-close-btn {
+      display: grid; place-items: center;
+      position: absolute; top: 20px; right: 20px;
+      width: 32px; height: 32px; border-radius: 8px;
+      background: rgba(255,255,255,0.1); border: none; color: white; font-size: 15px; cursor: pointer;
+    }
+
+    main {
+      margin-left: 0;
+      padding: 76px 16px 24px;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    h2 { font-size: 22px; margin-bottom: 24px; }
+    .card .num { font-size: 28px; }
+    #finRemaining { font-size: 36px !important; }
+
+    /* Cada fila de campos de formulario pasa de una fila horizontal a campos apilados de ancho completo */
+    .form-row, .field-row { flex-direction: column; align-items: stretch; }
+    .form-row > *, .field-row > * { width: 100% !important; }
+
+    /* El calendario conserva su tamaño legible y se desliza horizontalmente en vez de comprimirse */
+    .cal-grid-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cal-grid { min-width: 700px; }
+
+    /* Tablas más compactas; siguen deslizando horizontalmente gracias a overflow-x en .table-container */
+    th, td { padding: 10px 12px; font-size: 13px; }
+
+    /* Columnas del kanban casi a ancho completo, con un adelanto de la siguiente columna */
+    .kanban-col { min-width: 85vw; }
+
+    /* Detalle de un post: de 2 columnas a 1 columna apilada */
+    .post-detail-grid { grid-template-columns: 1fr; gap: 16px; }
+  }
 </style>
 </head>
 <body>
 
+<header class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Abrir menú">☰</button>
+  <h1>✧ <span>Agenda</span></h1>
+</header>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileMenu()"></div>
+
 <aside class="left-sidebar">
+  <button class="sidebar-close-btn" onclick="closeMobileMenu()" aria-label="Cerrar menú">✕</button>
   <h1>✧ <span>Agenda</span></h1>
   <div style="flex:1;">
     <button class="navbtn active" data-view="dashboard">🏠 Resumen</button>
@@ -339,7 +433,7 @@
       
       <div class="card" style="margin-bottom: 32px; background: rgba(163, 31, 62, 0.03); border: 1px dashed var(--vinotinto-accent);">
         <h3 style="color: var(--vinotinto-main);">➕ Gestionar Marcas</h3>
-        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom: 16px;">
+        <div class="field-row" style="margin-bottom: 16px;">
           <input type="text" id="newBrandName" placeholder="Nombre (ej: @mi.marca)" style="flex:1; min-width:200px;">
           <select id="newBrandColor">
             <option value="pink">Color: Rosa</option>
@@ -357,7 +451,7 @@
       <div class="card" style="margin-bottom: 32px; padding: 28px;">
         <h3 style="color: var(--vinotinto-main); font-size: 16px; font-weight: 800; margin-bottom: 20px;">✍️ Nueva Idea de Contenido</h3>
 
-        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+        <div class="field-row" style="margin-bottom:16px;">
           <select id="postBrand"></select>
           <input type="date" id="postDate">
           <select id="postType">
@@ -382,7 +476,7 @@
 
         <textarea id="postInspiration" placeholder="URLs de inspiración / referencias (una por línea)..." rows="2" style="width:100%; margin-bottom:16px; resize:vertical;"></textarea>
 
-        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <div class="field-row" style="gap:12px;">
           <input type="text" id="postImgUrl" placeholder="URL de la imagen (opcional, ej: enlace de Google Drive)" style="flex:1; min-width:240px;" oninput="previewPostImg()">
           <img id="postImgPreview" class="img-preview" style="display:none; border:1px solid var(--border);" onerror="this.style.display='none'">
           <button class="btn" onclick="addPost()">Guardar Idea</button>
@@ -406,7 +500,9 @@
         <div id="calLabel" style="font-size:20px; font-weight:800; color:var(--vinotinto-main);"></div>
         <button class="btn btn-ghost" style="padding: 8px 16px;" onclick="changeMonth(1)">Siguiente ▶</button>
       </div>
-      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-grid-wrap">
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
     </div>
 
     <!-- PERSONAL (KANBAN) -->
@@ -552,8 +648,23 @@ document.querySelectorAll('.navbtn').forEach(btn=>{
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    closeMobileMenu(); // en móvil, elegir una vista cierra el cajón del menú
   });
 });
+
+/* ===================== NAVEGACIÓN MÓVIL (cajón deslizante) ===================== */
+function toggleMobileMenu(){
+  const sidebar = document.querySelector('aside.left-sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const isOpen = sidebar.classList.toggle('sidebar-open');
+  overlay.classList.toggle('active', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+}
+function closeMobileMenu(){
+  document.querySelector('aside.left-sidebar').classList.remove('sidebar-open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function fmtMoney(n, cur){ return n.toLocaleString('es-VE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + cur; }
@@ -794,7 +905,7 @@ function renderPosts(){
     const detailRow = isOpen ? `
     <tr>
       <td colspan="7" style="background:#fafbfc; padding:20px 24px;">
-        <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap:24px;">
+        <div class="post-detail-grid">
           <div>
             <h4 style="margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Copy</h4>
             <p style="margin:0; white-space:pre-wrap; font-size:13px; line-height:1.5; color:var(--text-main);">${p.copy ? p.copy : '<em style="color:var(--text-muted);">Sin copy todavía</em>'}</p>
@@ -1147,7 +1258,8 @@ Object.assign(window, {
   liveUpdateDecorHeight, saveDecorHeight,
   addNewBrand, deleteBrand, addPost, deletePost, changePostStatus, togglePostDetail, previewPostImg,
   changeMonth, toggleCalFilter, addPersonal, deletePersonal,
-  drag, allowDrop, drop, addFinance, deleteFinance, handleCurrencyChange
+  drag, allowDrop, drop, addFinance, deleteFinance, handleCurrencyChange,
+  toggleMobileMenu, closeMobileMenu
 });
 </script>
 </body>
