@@ -457,6 +457,12 @@
         <div class="card"><h3>Balance</h3><div class="finance-total" id="finBalance">$0</div></div>
         <div class="card"><h3>Deudas Activas</h3><div class="finance-total neg" id="finDeudas">$0</div></div>
       </div>
+
+      <div class="card" style="margin-bottom: 40px; padding: 32px; text-align: center;">
+        <h3 style="font-size: 15px;">💰 Lo que te queda</h3>
+        <div class="finance-total" id="finRemaining" style="font-size: 48px;">$0</div>
+        <div id="finRemainingBreakdown" style="color: var(--text-muted); font-size: 13px; margin-top: 10px; font-weight: 500;"></div>
+      </div>
       
       <div class="form-row">
         <select id="finType">
@@ -979,6 +985,13 @@ function renderFinance(){
   const balEl = document.getElementById('finBalance');
   balEl.textContent = (income - expense).toLocaleString();
   balEl.className = 'finance-total ' + (income-expense>=0?'pos':'neg');
+
+  const remaining = income - expense;
+  const remEl = document.getElementById('finRemaining');
+  remEl.textContent = remaining.toLocaleString();
+  remEl.className = 'finance-total ' + (remaining>=0?'pos':'neg');
+  document.getElementById('finRemainingBreakdown').textContent =
+    `Ingresos (${income.toLocaleString()}) − Gastos (${expense.toLocaleString()})`;
 }
 
 /* ===================== DASHBOARD ===================== */
@@ -1097,3 +1110,4 @@ Object.assign(window, {
 </script>
 </body>
 </html>
+
