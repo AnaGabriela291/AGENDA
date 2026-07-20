@@ -196,6 +196,7 @@
     color: var(--text-main); border-radius: 12px; padding: 12px 16px; transition: all 0.2s;
     font-weight: 500;
   }
+  input:disabled { opacity: 0.5; cursor: not-allowed; }
   
   select {
     appearance: none; -webkit-appearance: none; -moz-appearance: none;
@@ -324,23 +325,11 @@
       <div class="card" style="margin-bottom: 32px; padding: 32px;">
         <h3 style="color: var(--vinotinto-main); font-size: 18px; font-weight: 800; margin-bottom: 24px;">Personalizar Interfaz</h3>
         
-        <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">1. Fondo de la Página (Opcional)</div>
-        <div class="form-row" style="background: transparent; padding:0; border:none; margin:0 0 24px 0; box-shadow: none;">
-          <label class="custom-file-upload">
-            <input type="file" id="bgUploader" accept="image/png, image/jpeg" onchange="updateFileLabel(this)">
-            <div class="file-btn-ui" id="bgUploaderLabel">🖼️ Seleccionar Fondo</div>
-          </label>
-          <button class="btn" onclick="setCustomBg()">Aplicar Fondo</button>
-          <button class="btn btn-ghost" onclick="clearCustomBg()">Quitar Fondo</button>
-        </div>
-
-        <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">2. Imágenes Decorativas (Lateral Derecho - Máximo 3)</div>
+        <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">Imágenes Decorativas (Lateral Derecho - Máximo 10)</div>
         <div class="form-row" style="background: transparent; padding:0; border:none; margin:0; box-shadow: none;">
-          <label class="custom-file-upload">
-            <input type="file" id="decorUploader" accept="image/png, image/jpeg" onchange="uploadDecorImage(this)">
-            <div class="file-btn-ui" id="decorUploaderLabel">✨ Subir Imagen Decorativa</div>
-          </label>
-          <small style="color: var(--text-muted); margin-left: 12px;">Pasa el mouse sobre la imagen para ajustar su tamaño.</small>
+          <input type="text" id="decorUrlInput" placeholder="Pega aquí la URL pública de la imagen (ej: enlace de Google Drive)" style="flex:1; min-width:280px;">
+          <button class="btn" onclick="uploadDecorImage()">✨ Añadir Imagen</button>
+          <small style="color: var(--text-muted); width:100%;">Sube la imagen a Google Drive → compártela como "Cualquier persona con el enlace" → pega ese enlace aquí. Pasa el mouse sobre una imagen ya añadida para ajustar su tamaño.</small>
         </div>
       </div>
 
@@ -452,16 +441,17 @@
     <div class="view" id="view-finanzas">
       <h2>Control Financiero</h2>
       <div class="cards">
-        <div class="card"><h3>Ingresos</h3><div class="finance-total pos" id="finIncome">$0</div></div>
-        <div class="card"><h3>Gastos</h3><div class="finance-total neg" id="finExpense">$0</div></div>
-        <div class="card"><h3>Balance</h3><div class="finance-total" id="finBalance">$0</div></div>
-        <div class="card"><h3>Deudas Activas</h3><div class="finance-total neg" id="finDeudas">$0</div></div>
+        <div class="card"><h3>Ingresos (USD)</h3><div class="finance-total pos" id="finIncome">$0</div></div>
+        <div class="card"><h3>Gastos (USD)</h3><div class="finance-total neg" id="finExpense">$0</div></div>
+        <div class="card"><h3>Balance (USD)</h3><div class="finance-total" id="finBalance">$0</div></div>
+        <div class="card"><h3>Deudas Pendientes (USD)</h3><div class="finance-total neg" id="finDeudas">$0</div></div>
       </div>
 
       <div class="card" style="margin-bottom: 40px; padding: 32px; text-align: center;">
-        <h3 style="font-size: 15px;">💰 Lo que te queda</h3>
+        <h3 style="font-size: 15px;">💰 Lo que te queda (calculadora)</h3>
         <div class="finance-total" id="finRemaining" style="font-size: 48px;">$0</div>
         <div id="finRemainingBreakdown" style="color: var(--text-muted); font-size: 13px; margin-top: 10px; font-weight: 500;"></div>
+        <div style="color: var(--text-muted); font-size: 12px; margin-top: 6px;">Las deudas se muestran aparte como pendientes y no se restan de este total.</div>
       </div>
       
       <div class="form-row">
@@ -472,20 +462,22 @@
         </select>
         <input type="date" id="finDate">
         <input type="text" id="finDesc" placeholder="Concepto del movimiento" style="flex:1; min-width:200px;">
-        <select id="finCur">
+        <select id="finCur" onchange="handleCurrencyChange()">
           <option value="BS">Moneda: Bs</option>
           <option value="BCV">Moneda: BCV</option>
           <option value="EUR">Moneda: Euros</option>
           <option value="USDT">Moneda: USDT</option>
         </select>
         <input type="number" id="finAmount" placeholder="Monto" step="0.01" style="width: 140px;">
+        <input type="number" id="finRate" placeholder="Tasa del día" step="0.01" style="width: 140px;">
         <button class="btn" onclick="addFinance()">Registrar Movimiento</button>
+        <small style="color: var(--text-muted); width:100%;">La tasa indica cuántas unidades de esa moneda equivalen a 1 USD (ej: si el Bs está en 200, escribe 200). Para USDT se asume 1:1 automáticamente.</small>
       </div>
       
       <div class="table-container">
         <h3>Historial de Movimientos</h3>
         <table>
-          <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Moneda</th><th>Monto</th><th>Acción</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Moneda</th><th>Monto</th><th>Tasa</th><th>Equiv. USD</th><th>Acción</th></tr></thead>
           <tbody id="finTable"></tbody>
         </table>
       </div>
@@ -547,7 +539,7 @@ function reportError(err) {
 }
 
 /* ===================== ESTADO LOCAL EN MEMORIA (espejo de Firestore) ===================== */
-let db = { posts: [], personal: [], finance: [], brands: [], bgImage: '', decorImages: [] };
+let db = { posts: [], personal: [], finance: [], brands: [], decorImages: [] };
 let calFiltersState = { personal: true };
 
 /* ===================== INTERFAZ: PESTAÑAS ===================== */
@@ -566,9 +558,7 @@ function updateFileLabel(inputElement) {
     label.innerHTML = "✅ Archivo seleccionado";
     label.classList.add('has-file');
   } else {
-    if(inputElement.id === 'bgUploader') label.innerHTML = "🖼️ Seleccionar Fondo";
-    else if(inputElement.id === 'decorUploader') label.innerHTML = "✨ Subir Imagen Decorativa";
-    else label.innerHTML = "📸 Subir Imagen";
+    label.innerHTML = "📸 Subir Imagen";
     label.classList.remove('has-file');
   }
 }
@@ -619,51 +609,40 @@ function compressImage(file, maxWidth = 1000, maxHeight = 1000) {
   });
 }
 
-/* ===================== PERSONALIZAR: FONDO ===================== */
-function applyBgFromDB() {
-  if (db.bgImage) {
-    document.body.style.backgroundImage = `url(${db.bgImage})`;
-    document.body.style.backgroundSize = 'cover';
-    document.body.style.backgroundAttachment = 'fixed';
-  } else {
-    document.body.style.backgroundImage = 'none';
+/* ===================== PERSONALIZAR: DECORACIÓN DERECHA (vía URL pública, con tamaño ajustable) =====================
+   Ya no se sube el archivo binario a Firebase (eso requeriría Storage).
+   En su lugar, el usuario aloja la imagen en un servicio externo (ej: Google Drive
+   compartido como público) y aquí solo se guarda el TEXTO de esa URL en Firestore. */
+function convertDriveLink(url) {
+  // Detecta enlaces de "compartir" de Google Drive en distintos formatos
+  // y los convierte a un link de imagen directa que sí funciona dentro de un <img src="">.
+  // Se usa el dominio de Google que sirve miniaturas (lh3.googleusercontent.com) porque
+  // es más confiable para "hotlinking" que drive.google.com/uc?export=view (ese último
+  // a veces muestra la pantalla de "no se puede escanear por virus" en vez de la imagen).
+  let match = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (!match) match = url.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+  if (!match) match = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://lh3.googleusercontent.com/d/${match[1]}`;
   }
+  return url; // Si no es un link reconocido de Drive, se guarda tal cual (ya debe ser una URL directa de imagen)
 }
 
-async function setCustomBg() {
-  const fileInput = document.getElementById('bgUploader');
-  if (fileInput.files && fileInput.files[0]) {
-    try {
-      const compressed = await compressImage(fileInput.files[0]);
-      await setDoc(doc(fsDB, 'settings', 'background'), { image: compressed });
-      fileInput.value = ''; updateFileLabel(fileInput);
-    } catch (err) {
-      reportError(err);
-    }
-  }
-}
-
-async function clearCustomBg() {
-  try {
-    await setDoc(doc(fsDB, 'settings', 'background'), { image: '' });
-  } catch (err) { reportError(err); }
-}
-
-/* ===================== PERSONALIZAR: DECORACIÓN DERECHA (con tamaño ajustable) ===================== */
-async function uploadDecorImage(input) {
-  if (db.decorImages.length >= 3) {
-    alert("Solo puedes tener un máximo de 3 imágenes decorativas activas.");
-    input.value = ''; updateFileLabel(input);
+async function uploadDecorImage() {
+  if (db.decorImages.length >= 10) {
+    alert("Solo puedes tener un máximo de 10 imágenes decorativas activas.");
     return;
   }
-  if (input.files && input.files[0]) {
-    try {
-      const compressed = await compressImage(input.files[0]);
-      await addDoc(collection(fsDB, 'decorImages'), { img: compressed, height: 250 });
-      input.value = ''; updateFileLabel(input);
-    } catch (err) {
-      reportError(err);
-    }
+  const input = document.getElementById('decorUrlInput');
+  let rawUrl = input.value.trim();
+  if (!rawUrl) { alert('Pega la URL de una imagen.'); return; }
+  if (!/^https?:\/\//i.test(rawUrl)) rawUrl = 'https://' + rawUrl; // por si pegaron el link sin "https://" adelante
+  const finalUrl = convertDriveLink(rawUrl);
+  try {
+    await addDoc(collection(fsDB, 'decorImages'), { img: finalUrl, height: 250 });
+    input.value = '';
+  } catch (err) {
+    reportError(err);
   }
 }
 
@@ -932,18 +911,60 @@ function renderPersonal(){
 }
 
 /* ===================== FINANZAS ===================== */
+
+// Cuando la moneda es USDT, la tasa no aplica (ya es ≈1:1 con el dólar): se fija en 1 y se bloquea el campo.
+function handleCurrencyChange(){
+  const cur = document.getElementById('finCur').value;
+  const rateInput = document.getElementById('finRate');
+  if(!rateInput) return;
+  if(cur === 'USDT'){
+    rateInput.value = 1;
+    rateInput.disabled = true;
+    rateInput.placeholder = '1 (fijo para USDT)';
+  } else {
+    rateInput.disabled = false;
+    rateInput.placeholder = 'Tasa del día';
+  }
+}
+
+// Convierte un movimiento a su equivalente en USD usando la tasa registrada ese día.
+// La tasa representa "cuántas unidades de esa moneda equivalen a 1 USD".
+function toUSD(f){
+  const rate = (f.rate && f.rate > 0) ? f.rate : 1;
+  if(f.cur === 'USDT') return f.amount;
+  return f.amount / rate;
+}
+
+function fmtUSD(n){
+  return '$' + n.toLocaleString('es-VE',{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// Calculadora central: ingresos suman, gastos restan, deudas quedan aparte como pendientes.
+function computeFinanceSummary(){
+  const income = db.finance.filter(f=>f.type==='ingreso').reduce((s,f)=>s+toUSD(f),0);
+  const expense = db.finance.filter(f=>f.type==='gasto').reduce((s,f)=>s+toUSD(f),0);
+  const deudas = db.finance.filter(f=>f.type==='deuda').reduce((s,f)=>s+toUSD(f),0);
+  return { income, expense, deudas, balance: income - expense };
+}
+
 async function addFinance(){
   const type = document.getElementById('finType').value;
   const date = document.getElementById('finDate').value;
   const desc = document.getElementById('finDesc').value.trim();
   const cur = document.getElementById('finCur').value;
   const amount = parseFloat(document.getElementById('finAmount').value);
+  let rate = parseFloat(document.getElementById('finRate').value);
   
   if(!date || !desc || isNaN(amount)){ alert('Completa todos los campos financieros'); return; }
+  if(cur === 'USDT') rate = 1;
+  if(isNaN(rate) || rate <= 0) rate = 1;
+
   try {
-    await addDoc(collection(fsDB, 'finance'), {date, type, desc, cur, amount});
+    await addDoc(collection(fsDB, 'finance'), {date, type, desc, cur, amount, rate});
     document.getElementById('finDesc').value='';
     document.getElementById('finAmount').value='';
+    document.getElementById('finRate').value='';
+    handleCurrencyChange();
   } catch (err) { reportError(err); }
 }
 
@@ -962,6 +983,7 @@ function renderFinance(){
     let typeLabel = f.type === 'ingreso' ? 'Ingreso' : (f.type === 'gasto' ? 'Gasto' : 'Deuda');
     let colorClass = f.type === 'ingreso' ? 'pos' : 'neg';
     let sign = f.type === 'ingreso' ? '+' : '-';
+    const usdEq = toUSD(f);
     
     return `
     <tr>
@@ -970,28 +992,27 @@ function renderFinance(){
       <td style="font-weight:600;">${f.desc}</td>
       <td style="color:var(--text-muted);">${f.cur}</td>
       <td class="${colorClass}" style="font-weight:700;">${sign}${fmtMoney(f.amount, f.cur)}</td>
+      <td style="color:var(--text-muted);">${f.rate ? f.rate : '—'}</td>
+      <td class="${colorClass}" style="font-weight:700;">${sign}${fmtUSD(usdEq)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="deleteFinance('${f.id}')">✕</button></td>
     </tr>`
-  }).join('') : `<tr><td colspan="6" class="empty">Sin movimientos registrados</td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty">Sin movimientos registrados</td></tr>`;
 
-  const income = db.finance.filter(f=>f.type==='ingreso').reduce((s,f)=>s+f.amount,0);
-  const expense = db.finance.filter(f=>f.type==='gasto').reduce((s,f)=>s+f.amount,0);
-  const deudas = db.finance.filter(f=>f.type==='deuda').reduce((s,f)=>s+f.amount,0);
+  const { income, expense, deudas, balance } = computeFinanceSummary();
   
-  document.getElementById('finIncome').textContent = income.toLocaleString();
-  document.getElementById('finExpense').textContent = expense.toLocaleString();
-  document.getElementById('finDeudas').textContent = deudas.toLocaleString();
+  document.getElementById('finIncome').textContent = fmtUSD(income);
+  document.getElementById('finExpense').textContent = fmtUSD(expense);
+  document.getElementById('finDeudas').textContent = fmtUSD(deudas);
   
   const balEl = document.getElementById('finBalance');
-  balEl.textContent = (income - expense).toLocaleString();
-  balEl.className = 'finance-total ' + (income-expense>=0?'pos':'neg');
+  balEl.textContent = fmtUSD(balance);
+  balEl.className = 'finance-total ' + (balance>=0?'pos':'neg');
 
-  const remaining = income - expense;
   const remEl = document.getElementById('finRemaining');
-  remEl.textContent = remaining.toLocaleString();
-  remEl.className = 'finance-total ' + (remaining>=0?'pos':'neg');
+  remEl.textContent = fmtUSD(balance);
+  remEl.className = 'finance-total ' + (balance>=0?'pos':'neg');
   document.getElementById('finRemainingBreakdown').textContent =
-    `Ingresos (${income.toLocaleString()}) − Gastos (${expense.toLocaleString()})`;
+    `Ingresos (${fmtUSD(income)}) − Gastos (${fmtUSD(expense)}) · todo convertido a USD según la tasa registrada`;
 }
 
 /* ===================== DASHBOARD ===================== */
@@ -1000,10 +1021,13 @@ function renderDashboard(){
   if(!cardsEl) return;
   const pendingPosts = db.posts.filter(p=>p.status!=='Publicado').length;
   const pendingTasks = db.personal.filter(p=>p.status!=='done').length;
+  const { balance, deudas } = computeFinanceSummary();
   
   cardsEl.innerHTML = `
     <div class="card"><h3>Ideas en Grilla</h3><div class="num">${pendingPosts}</div></div>
     <div class="card"><h3>Tareas Activas</h3><div class="num">${pendingTasks}</div></div>
+    <div class="card"><h3>Balance Financiero</h3><div class="num" style="color:${balance>=0?'var(--theme-green)':'var(--theme-red)'};">${fmtUSD(balance)}</div></div>
+    <div class="card"><h3>Deudas Pendientes</h3><div class="num" style="color:var(--theme-red);">${fmtUSD(deudas)}</div></div>
   `;
 
   const today = new Date();
@@ -1043,7 +1067,6 @@ function renderAll(){
   renderPersonal();
   renderFinance();
   renderDecorSidebar();
-  applyBgFromDB();
 }
 renderAll(); // primer pintado (vacío) mientras conecta con Firebase
 
@@ -1076,11 +1099,6 @@ function initFirestoreListeners() {
     renderAll();
   }, (err) => console.error('Error al leer imágenes decorativas:', err));
 
-  onSnapshot(doc(fsDB, 'settings', 'background'), (snap) => {
-    db.bgImage = snap.exists() ? (snap.data().image || '') : '';
-    renderAll();
-  }, (err) => console.error('Error al leer configuración de fondo:', err));
-
   setFbStatus('ok', 'Conectado a Firebase');
 }
 
@@ -1098,16 +1116,16 @@ const todayISO = new Date().toISOString().slice(0,10);
 ['postDate','persDate','finDate'].forEach(id=>{
   if(document.getElementById(id)) document.getElementById(id).value = todayISO;
 });
+handleCurrencyChange();
 
 /* ===================== EXPONER FUNCIONES PARA LOS onclick/onchange/oninput DEL HTML ===================== */
 Object.assign(window, {
-  updateFileLabel, setCustomBg, clearCustomBg, uploadDecorImage, deleteDecorImage,
+  updateFileLabel, uploadDecorImage, deleteDecorImage,
   liveUpdateDecorHeight, saveDecorHeight,
   addNewBrand, deleteBrand, addPost, deletePost, changePostStatus,
   changeMonth, toggleCalFilter, addPersonal, deletePersonal,
-  drag, allowDrop, drop, addFinance, deleteFinance
+  drag, allowDrop, drop, addFinance, deleteFinance, handleCurrencyChange
 });
 </script>
 </body>
 </html>
-
