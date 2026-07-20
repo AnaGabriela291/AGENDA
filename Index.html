@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+  :root {
+    /* Paleta Vinotinto Moderna */
+    --vinotinto-dark: #2a0810;
+    --vinotinto-main: #4a0e1c;
+    --vinotinto-light: #7d1830;
+    --vinotinto-accent: #a31f3e;
+    --vinotinto-glow: rgba(163, 31, 62, 0.35);
+    
+    /* Fondos y Textos */
+    --bg-app: #f4f5f8;
+    --bg-card: #ffffff;
+    --text-main: #1e2025;
+    --text-muted: #757985;
+    --border: #eaedf2;
+    
+    /* Temas para Marcas Dinámicas */
+    --theme-pink: #ff4d6d;
+    --theme-purple: #8b5cf6;
+    --theme-green: #10b981;
+    --theme-blue: #3b82f6;
+    --theme-orange: #f97316;
+    --theme-red: #ef4444;
+    --theme-yellow: #f59e0b;
+    
+    --font-main: 'Inter', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  
+  body {
+    margin: 0; font-family: var(--font-main);
+    background-color: var(--bg-app); color: var(--text-main);
+    display: flex; min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+  
+  /* BARRA LATERAL IZQUIERDA */
+  aside.left-sidebar {
+    width: 260px; 
+    background: linear-gradient(180deg, var(--vinotinto-dark) 0%, var(--vinotinto-main) 100%);
+    display: flex; flex-direction: column; padding: 32px 20px; 
+    position: fixed; height: 100vh; color: white;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.06); z-index: 10;
+  }
+  
+  aside.left-sidebar h1 { 
+    font-size: 24px; font-weight: 800; margin: 0 0 40px; padding: 0 12px;
+    letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px;
+  }
+  aside.left-sidebar h1 span { color: #fca5a5; font-weight: 600; }
+  
+  .navbtn {
+    background: transparent; border: none; color: rgba(255,255,255,0.6); 
+    text-align: left; padding: 14px 16px; font-size: 14px; 
+    cursor: pointer; display: flex; align-items: center; gap: 12px;
+    border-radius: 12px; font-family: var(--font-main); font-weight: 600;
+    transition: all 0.3s ease; margin-bottom: 4px;
+  }
+  .navbtn:hover { background: rgba(255,255,255,0.08); color: white; transform: translateX(4px); }
+  .navbtn.active { background: var(--vinotinto-accent); color: white; box-shadow: 0 4px 16px var(--vinotinto-glow); }
+  
+  /* CONTENIDO PRINCIPAL Y LAYOUT GLOBAL */
+  main { 
+    margin-left: 260px; 
+    padding: 40px 48px; 
+    flex: 1; 
+    display: flex; 
+    gap: 40px;
+    max-width: 100%;
+  }
+  
+  .views-container {
+    flex: 1;
+    min-width: 0; 
+  }
+
+  .view { display: none; animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+  .view.active { display: block; }
+  
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* =========================================
+     BARRA LATERAL DERECHA (DECORACIÓN) 
+     Ajustada para tamaño manual
+     ========================================= */
+  .decor-sidebar {
+    width: 260px; 
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  
+  .decor-item-wrap {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(42, 8, 16, 0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    background: rgba(255,255,255,0.5);
+    /* El height se inyecta por JS según lo que elija el usuario */
+  }
+  .decor-item-wrap:hover { box-shadow: 0 16px 40px rgba(42, 8, 16, 0.15); }
+  
+  .decor-img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+  }
+
+  .btn-delete-decor {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(239, 68, 68, 0.9); color: white;
+    border: none; width: 32px; height: 32px; border-radius: 50%;
+    font-size: 14px; font-weight: bold; cursor: pointer;
+    opacity: 0; transition: opacity 0.2s, transform 0.2s;
+    display: grid; place-items: center; z-index: 2;
+  }
+  .decor-item-wrap:hover .btn-delete-decor { opacity: 1; }
+  .btn-delete-decor:hover { transform: scale(1.1); background: var(--theme-red); }
+  
+  /* CONTROL DE TAMAÑO (SLIDER) */
+  .decor-resize-ctrl {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, rgba(42, 8, 16, 0.8) 0%, transparent 100%);
+    padding: 24px 16px 12px;
+    opacity: 0; transition: opacity 0.2s;
+    display: flex; flex-direction: column; gap: 4px; z-index: 2;
+  }
+  .decor-item-wrap:hover .decor-resize-ctrl { opacity: 1; }
+  .decor-resize-ctrl label { color: white; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  
+  .decor-resize-ctrl input[type="range"] {
+    appearance: none; width: 100%; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px;
+    outline: none; cursor: pointer; border: none; padding: 0;
+  }
+  .decor-resize-ctrl input[type="range"]::-webkit-slider-thumb {
+    appearance: none; width: 16px; height: 16px; border-radius: 50%; background: white; cursor: pointer; transition: transform 0.1s;
+  }
+  .decor-resize-ctrl input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  /* TEXTOS Y COMPONENTES */
+  h2 { font-size: 28px; font-weight: 800; margin-top: 0; margin-bottom: 32px; letter-spacing: -0.5px; color: var(--vinotinto-dark); }
+  h3 { font-size: 14px; color: var(--text-muted); font-weight: 600; margin-bottom: 16px; }
+  
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px; }
+  .card { 
+    background: var(--bg-card); border-radius: 24px; padding: 24px; 
+    box-shadow: 0 12px 32px rgba(42, 8, 16, 0.04), 0 2px 8px rgba(42, 8, 16, 0.02);
+    border: 1px solid rgba(255,255,255,0.5); transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(42, 8, 16, 0.08); }
+  .card h3 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .card .num { font-size: 36px; font-weight: 800; color: var(--vinotinto-main); letter-spacing: -1px; }
+  
+  .tag-theme { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .t-pink { background: rgba(255, 77, 109, 0.1); color: var(--theme-pink); }
+  .t-purple { background: rgba(139, 92, 246, 0.1); color: var(--theme-purple); }
+  .t-green { background: rgba(16, 185, 129, 0.1); color: var(--theme-green); }
+  .t-blue { background: rgba(59, 130, 246, 0.1); color: var(--theme-blue); }
+  .t-orange { background: rgba(249, 115, 22, 0.1); color: var(--theme-orange); }
+  
+  .ev-t-pink { background: rgba(255, 77, 109, 0.15); color: var(--theme-pink); border-left: 3px solid var(--theme-pink); }
+  .ev-t-purple { background: rgba(139, 92, 246, 0.15); color: var(--theme-purple); border-left: 3px solid var(--theme-purple); }
+  .ev-t-green { background: rgba(16, 185, 129, 0.15); color: var(--theme-green); border-left: 3px solid var(--theme-green); }
+  .ev-t-blue { background: rgba(59, 130, 246, 0.15); color: var(--theme-blue); border-left: 3px solid var(--theme-blue); }
+  .ev-t-orange { background: rgba(249, 115, 22, 0.15); color: var(--theme-orange); border-left: 3px solid var(--theme-orange); }
+
+  .table-container { background: var(--bg-card); border-radius: 24px; padding: 24px; box-shadow: 0 12px 32px rgba(42, 8, 16, 0.04); overflow-x: auto; margin-bottom: 24px;}
+  table { width: 100%; border-collapse: separate; border-spacing: 0 8px; margin-top: 8px; }
+  th, td { padding: 16px; text-align: left; font-size: 14px; }
+  th { color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
+  td { background: #fafbfc; }
+  td:first-child { border-radius: 12px 0 0 12px; }
+  td:last-child { border-radius: 0 12px 12px 0; }
+  tr:hover td { background: #f0f2f5; }
+  
+  .form-row { 
+    display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 32px; align-items: center; 
+    background: var(--bg-card); padding: 20px; border-radius: 20px; 
+    box-shadow: 0 8px 24px rgba(42, 8, 16, 0.03);
+  }
+  
+  input, textarea {
+    font-family: inherit; font-size: 14px; background: #f4f5f8; border: 1px solid transparent;
+    color: var(--text-main); border-radius: 12px; padding: 12px 16px; transition: all 0.2s;
+    font-weight: 500;
+  }
+  
+  select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    font-family: inherit; font-size: 14px; font-weight: 500; color: var(--text-main);
+    background-color: #f4f5f8; border: 1px solid transparent; border-radius: 12px;
+    padding: 12px 40px 12px 16px; transition: all 0.2s; cursor: pointer;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23757985%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--vinotinto-accent); background-color: white; box-shadow: 0 0 0 3px var(--vinotinto-glow); }
+  
+  .custom-file-upload { position: relative; overflow: hidden; display: inline-block; cursor: pointer; }
+  .custom-file-upload input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
+  .file-btn-ui {
+    display: flex; align-items: center; gap: 8px; background: #f4f5f8; border: 1px dashed #cbd5e1;
+    color: var(--text-muted); padding: 12px 16px; border-radius: 12px; font-weight: 600;
+    font-size: 13px; transition: all 0.2s; white-space: nowrap;
+  }
+  .custom-file-upload:hover .file-btn-ui { border-color: var(--vinotinto-accent); color: var(--vinotinto-accent); background: white; box-shadow: 0 4px 12px rgba(163,31,62,0.1); }
+  .file-btn-ui.has-file { background: rgba(16, 185, 129, 0.1); border-color: var(--theme-green); color: var(--theme-green); border-style: solid; }
+  
+  .btn { 
+    background: linear-gradient(135deg, var(--vinotinto-accent), var(--vinotinto-light)); 
+    color: white; border: none; cursor: pointer; font-weight: 600; 
+    font-size: 13px; padding: 12px 24px; border-radius: 50px; 
+    box-shadow: 0 4px 16px var(--vinotinto-glow); transition: all 0.3s ease;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px var(--vinotinto-glow); filter: brightness(1.1); }
+  .btn-danger { background: rgba(239, 68, 68, 0.1); color: var(--theme-red); box-shadow: none; border-radius: 12px; padding: 8px 16px; }
+  .btn-danger:hover { background: var(--theme-red); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+  .btn-ghost { background: transparent; color: var(--vinotinto-main); border: 1px solid var(--vinotinto-accent); box-shadow: none; }
+  .btn-ghost:hover { background: var(--vinotinto-accent); color: white; }
+  .btn-sm { padding: 8px 16px; font-size: 12px; border-radius: 8px; }
+  
+  .pill { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pill-alta { background: rgba(239, 68, 68, 0.15); color: var(--theme-red); }
+  .pill-media { background: rgba(245, 158, 11, 0.15); color: var(--theme-yellow); }
+  .pill-baja { background: rgba(16, 185, 129, 0.15); color: var(--theme-green); }
+  
+  .btn-delete-brand {
+    background: transparent; border: none; color: inherit; cursor: pointer;
+    font-weight: bold; font-size: 12px; margin-left: 6px; padding: 0 4px;
+    opacity: 0.6; transition: 0.2s;
+  }
+  .btn-delete-brand:hover { opacity: 1; transform: scale(1.2); }
+
+  .kanban-board { display: flex; gap: 24px; margin-top: 24px; align-items: flex-start; overflow-x: auto; padding-bottom: 24px; }
+  .kanban-col { flex: 1; min-width: 300px; background: rgba(244, 245, 248, 0.7); border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 16px; border: 1px dashed var(--border); }
+  .kanban-header { font-size: 15px; font-weight: 700; color: var(--text-main); margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .kanban-item { background: var(--bg-card); border-radius: 16px; padding: 16px; cursor: grab; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid transparent; }
+  .kanban-item:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06); border-color: var(--vinotinto-glow); }
+  .kanban-item:active { cursor: grabbing; transform: scale(0.98); }
+  .kanban-item .k-title { font-weight: 600; font-size: 14px; line-height: 1.4; }
+  .kanban-item .k-meta { font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+  
+  .cal-filters { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; padding: 16px 24px; background: var(--bg-card); border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+  .cal-filters label { font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f4f5f8; border-radius: 8px; transition: background 0.2s; }
+  .cal-filters label:hover { background: #e2e8f0; }
+  
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; margin-top: 16px; }
+  .cal-head { text-align: center; font-size: 12px; font-weight: 700; color: var(--text-muted); padding: 8px; text-transform: uppercase; letter-spacing: 1px; }
+  .cal-day { background: var(--bg-card); border-radius: 16px; min-height: 120px; padding: 12px; font-size: 12px; position: relative; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.02); border: 2px solid transparent; }
+  .cal-day:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.05); }
+  .cal-day.today { border-color: var(--vinotinto-light); background: rgba(163, 31, 62, 0.03); }
+  .cal-day .dnum { color: var(--text-main); font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .cal-event { margin-top: 6px; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+  
+  .img-preview { max-width: 48px; max-height: 48px; border-radius: 12px; object-fit: cover; }
+  
+  .finance-total { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+  .pos { color: var(--theme-green); } .neg { color: var(--theme-red); }
+  .empty { color: var(--text-muted); font-style: italic; padding: 32px 0; text-align: center; }
+  
+  ::-webkit-scrollbar { width: 10px; height: 10px; } 
+  ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+  
+  input[type="checkbox"] {
+    appearance: none; width: 18px; height: 18px; border: 2px solid var(--text-muted); border-radius: 6px;
+    display: grid; place-content: center; cursor: pointer; transition: 0.2s; background: white; margin: 0;
+  }
+  input[type="checkbox"]::before {
+    content: ""; width: 10px; height: 10px; transform: scale(0);
+    transition: 0.2s transform; box-shadow: inset 1em 1em white;
+    transform-origin: center; clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  }
+  input[type="checkbox"]:checked { background-color: var(--vinotinto-accent); border-color: var(--vinotinto-accent); }
+  input[type="checkbox"]:checked::before { transform: scale(1); }
+</style>
+</head>
+<body>
+
+<aside class="left-sidebar">
+  <h1>✧ <span>Agenda</span></h1>
+  <div style="flex:1;">
+    <button class="navbtn active" data-view="dashboard">🏠 Resumen</button>
+    <button class="navbtn" data-view="marcas">✨ Grillas de Contenido</button>
+    <button class="navbtn" data-view="calendario">📅 Calendario</button>
+    <button class="navbtn" data-view="personal">⚡ Mi Día a Día</button>
+    <button class="navbtn" data-view="finanzas">💳 Finanzas</button>
+  </div>
+</aside>
+
+<main>
+  <!-- CONTENEDOR CENTRAL DE PESTAÑAS -->
+  <div class="views-container">
+    
+    <!-- DASHBOARD / RESUMEN -->
+    <div class="view active" id="view-dashboard">
+      <h2>Resumen General</h2>
+      <div class="cards" id="dashCards"></div>
+      
+      <!-- APARTADO DE PERSONALIZACIÓN -->
+      <div class="card" style="margin-bottom: 32px; padding: 32px;">
+        <h3 style="color: var(--vinotinto-main); font-size: 18px; font-weight: 800; margin-bottom: 24px;">Personalizar Interfaz</h3>
+        
+        <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">1. Fondo de la Página (Opcional)</div>
+        <div class="form-row" style="background: transparent; padding:0; border:none; margin:0 0 24px 0; box-shadow: none;">
+          <label class="custom-file-upload">
+            <input type="file" id="bgUploader" accept="image/png, image/jpeg" onchange="updateFileLabel(this)">
+            <div class="file-btn-ui" id="bgUploaderLabel">🖼️ Seleccionar Fondo</div>
+          </label>
+          <button class="btn" onclick="setCustomBg()">Aplicar Fondo</button>
+          <button class="btn btn-ghost" onclick="clearCustomBg()">Quitar Fondo</button>
+        </div>
+
+        <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">2. Imágenes Decorativas (Lateral Derecho - Máximo 3)</div>
+        <div class="form-row" style="background: transparent; padding:0; border:none; margin:0; box-shadow: none;">
+          <label class="custom-file-upload">
+            <input type="file" id="decorUploader" accept="image/png, image/jpeg" onchange="uploadDecorImage(this)">
+            <div class="file-btn-ui" id="decorUploaderLabel">✨ Subir Imagen Decorativa</div>
+          </label>
+          <small style="color: var(--text-muted); margin-left: 12px;">Pasa el mouse sobre la imagen para ajustar su tamaño.</small>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <h3>Próximos Pendientes (7 días)</h3>
+        <table>
+          <thead><tr><th>Fecha</th><th>Marca / Área</th><th>Descripción</th><th>Prioridad</th></tr></thead>
+          <tbody id="dashUpcoming"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MARCAS / GRILLAS -->
+    <div class="view" id="view-marcas">
+      <h2>Grillas de Contenido</h2>
+      
+      <div class="card" style="margin-bottom: 32px; background: rgba(163, 31, 62, 0.03); border: 1px dashed var(--vinotinto-accent);">
+        <h3 style="color: var(--vinotinto-main);">➕ Gestionar Marcas</h3>
+        <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; margin-bottom: 16px;">
+          <input type="text" id="newBrandName" placeholder="Nombre (ej: @mi.marca)" style="flex:1; min-width:200px;">
+          <select id="newBrandColor">
+            <option value="pink">Color: Rosa</option>
+            <option value="purple">Color: Morado</option>
+            <option value="blue">Color: Azul</option>
+            <option value="green">Color: Verde</option>
+            <option value="orange">Color: Naranja</option>
+          </select>
+          <button class="btn" onclick="addNewBrand()">Guardar Marca</button>
+        </div>
+        
+        <div id="activeBrandsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(163, 31, 62, 0.1);"></div>
+      </div>
+
+      <div class="form-row">
+        <select id="postBrand"></select>
+        <input type="date" id="postDate">
+        <input type="text" id="postTitle" placeholder="Idea de contenido / Título..." style="flex:1; min-width:200px;">
+        <select id="postType">
+          <option value="Post">Formato: Post</option>
+          <option value="Video">Formato: Video / Reel</option>
+          <option value="Carrusel">Formato: Carrusel</option>
+          <option value="Historia">Formato: Historia</option>
+        </select>
+        <select id="postStatus">
+          <option value="Pendiente">Estado: Pendiente</option>
+          <option value="En progreso">Estado: En progreso</option>
+          <option value="Aprobado">Estado: Aprobado</option>
+          <option value="Publicado">Estado: Publicado</option>
+        </select>
+        <label class="custom-file-upload">
+          <input type="file" id="postImg" accept="image/png, image/jpeg" onchange="updateFileLabel(this)">
+          <div class="file-btn-ui" id="postImgLabel">📸 Subir Imagen</div>
+        </label>
+        <button class="btn" onclick="addPost()">Guardar Idea</button>
+      </div>
+      
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Visual</th><th>Fecha</th><th>Marca</th><th>Título</th><th>Formato</th><th>Estado</th><th>Acción</th></tr></thead>
+          <tbody id="postsTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CALENDARIO -->
+    <div class="view" id="view-calendario">
+      <h2>Calendario</h2>
+      <div class="cal-filters" id="dynamicCalFilters"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px; padding: 0 16px;">
+        <button class="btn btn-ghost" style="padding: 8px 16px;" onclick="changeMonth(-1)">◀ Anterior</button>
+        <div id="calLabel" style="font-size:20px; font-weight:800; color:var(--vinotinto-main);"></div>
+        <button class="btn btn-ghost" style="padding: 8px 16px;" onclick="changeMonth(1)">Siguiente ▶</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+
+    <!-- PERSONAL (KANBAN) -->
+    <div class="view" id="view-personal">
+      <h2>Mi Día a Día</h2>
+      <div class="form-row">
+        <input type="date" id="persDate">
+        <input type="text" id="persTitle" placeholder="¿Cuál es la siguiente tarea?" style="flex:1; min-width:220px;">
+        <select id="persBrand"></select>
+        <select id="persPriority">
+          <option value="baja">Prioridad Baja</option>
+          <option value="media" selected>Prioridad Media</option>
+          <option value="alta">Prioridad Alta</option>
+        </select>
+        <button class="btn" onclick="addPersonal()">Añadir Tarea</button>
+      </div>
+      
+      <div class="kanban-board">
+        <div class="kanban-col" ondragover="allowDrop(event)" ondrop="drop(event, 'todo')">
+          <div class="kanban-header">📌 Por Hacer <span class="pill" style="background: white;">Nuevas</span></div>
+          <div id="k-todo" style="min-height: 100px; display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+        <div class="kanban-col" ondragover="allowDrop(event)" ondrop="drop(event, 'doing')">
+          <div class="kanban-header">⏳ En Progreso <span class="pill" style="background: white;">Activas</span></div>
+          <div id="k-doing" style="min-height: 100px; display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+        <div class="kanban-col" ondragover="allowDrop(event)" ondrop="drop(event, 'done')">
+          <div class="kanban-header">✨ Completado <span class="pill" style="background: white;">Hecho</span></div>
+          <div id="k-done" style="min-height: 100px; display: flex; flex-direction: column; gap: 12px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINANZAS -->
+    <div class="view" id="view-finanzas">
+      <h2>Control Financiero</h2>
+      <div class="cards">
+        <div class="card"><h3>Ingresos</h3><div class="finance-total pos" id="finIncome">$0</div></div>
+        <div class="card"><h3>Gastos</h3><div class="finance-total neg" id="finExpense">$0</div></div>
+        <div class="card"><h3>Balance</h3><div class="finance-total" id="finBalance">$0</div></div>
+        <div class="card"><h3>Deudas Activas</h3><div class="finance-total neg" id="finDeudas">$0</div></div>
+      </div>
+      
+      <div class="form-row">
+        <select id="finType">
+          <option value="ingreso">Tipo: Ingreso</option>
+          <option value="gasto">Tipo: Gasto</option>
+          <option value="deuda">Tipo: Deuda</option>
+        </select>
+        <input type="date" id="finDate">
+        <input type="text" id="finDesc" placeholder="Concepto del movimiento" style="flex:1; min-width:200px;">
+        <select id="finCur">
+          <option value="BS">Moneda: Bs</option>
+          <option value="BCV">Moneda: BCV</option>
+          <option value="EUR">Moneda: Euros</option>
+          <option value="USDT">Moneda: USDT</option>
+        </select>
+        <input type="number" id="finAmount" placeholder="Monto" step="0.01" style="width: 140px;">
+        <button class="btn" onclick="addFinance()">Registrar Movimiento</button>
+      </div>
+      
+      <div class="table-container">
+        <h3>Historial de Movimientos</h3>
+        <table>
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Moneda</th><th>Monto</th><th>Acción</th></tr></thead>
+          <tbody id="finTable"></tbody>
+        </table>
+      </div>
+    </div>
+    
+  </div> <!-- Fin .views-container -->
+
+  <!-- COLUMNA DERECHA (DECORACIÓN GLOBAL) -->
+  <aside class="decor-sidebar" id="decorSidebar">
+    <!-- Las imágenes se renderizan aquí dinámicamente -->
+  </aside>
+
+</main>
+
+<script>
+/* ===================== BASE DE DATOS LOCAL ===================== */
+const DB_KEY = 'agenda_cm_db_v7';
+function loadDB(){
+  const raw = localStorage.getItem(DB_KEY);
+  if(raw) {
+    let data = JSON.parse(raw);
+    if(!data.brands) data.brands = [];
+    if(!data.decorImages) data.decorImages = [];
+    
+    // Migración por si hay imágenes de la versión anterior guardadas solo como strings
+    if(data.decorImages.length > 0 && typeof data.decorImages[0] === 'string') {
+      data.decorImages = data.decorImages.map(imgStr => ({ img: imgStr, height: 250 }));
+    }
+    
+    return data;
+  }
+  return { 
+    posts:[], personal:[], finance:[], bgImage: '',
+    brands: [
+      { id: 'formacion', name: '@formacion.nextore', theme: 'pink' },
+      { id: 'obras', name: '@nextoreobrasciviles', theme: 'purple' }
+    ],
+    decorImages: []
+  };
+}
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+let db = loadDB();
+
+let calFiltersState = { personal: true }; 
+db.brands.forEach(b => calFiltersState[b.id] = true);
+
+/* ===================== INTERFAZ ===================== */
+function updateFileLabel(inputElement) {
+  const label = inputElement.nextElementSibling;
+  if(inputElement.files && inputElement.files.length > 0) {
+    label.innerHTML = "✅ Archivo seleccionado";
+    label.classList.add('has-file');
+  } else {
+    if(inputElement.id === 'bgUploader') label.innerHTML = "🖼️ Seleccionar Fondo";
+    else if(inputElement.id === 'decorUploader') label.innerHTML = "✨ Subir Imagen Decorativa";
+    else label.innerHTML = "📸 Subir Imagen";
+    label.classList.remove('has-file');
+  }
+}
+
+document.querySelectorAll('.navbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function fmtMoney(n, cur){ return n.toLocaleString('es-VE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + cur; }
+
+/* ===================== PERSONALIZAR: FONDO ===================== */
+function applyBgFromDB() {
+  if (db.bgImage) {
+    document.body.style.backgroundImage = `url(${db.bgImage})`;
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundAttachment = 'fixed';
+  } else {
+    document.body.style.backgroundImage = 'none';
+  }
+}
+function setCustomBg() {
+  const fileInput = document.getElementById('bgUploader');
+  if (fileInput.files && fileInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      db.bgImage = e.target.result;
+      saveDB();
+      applyBgFromDB();
+      fileInput.value = ''; updateFileLabel(fileInput);
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  }
+}
+function clearCustomBg() {
+  db.bgImage = '';
+  saveDB();
+  applyBgFromDB();
+}
+applyBgFromDB();
+
+/* ===================== PERSONALIZAR: DECORACIÓN DERECHA ===================== */
+function uploadDecorImage(input) {
+  if (db.decorImages.length >= 3) {
+    alert("Solo puedes tener un máximo de 3 imágenes decorativas activas.");
+    input.value = ''; updateFileLabel(input);
+    return;
+  }
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      // Guardamos la imagen con un alto inicial de 250px por defecto
+      db.decorImages.push({ img: e.target.result, height: 250 });
+      saveDB();
+      renderDecorSidebar();
+      input.value = ''; updateFileLabel(input);
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function deleteDecorImage(index) {
+  db.decorImages.splice(index, 1);
+  saveDB();
+  renderDecorSidebar();
+}
+
+// Actualiza la altura de la imagen mientras mueves el slider (sin guardar en base de datos todavía para que sea rápido)
+function liveUpdateDecorHeight(index, val) {
+  const wrap = document.getElementById(`decor-wrap-${index}`);
+  if(wrap) {
+    wrap.style.height = val + 'px';
+  }
+}
+
+// Guarda la altura final en la base de datos cuando sueltas el slider
+function saveDecorHeight(index, val) {
+  db.decorImages[index].height = parseInt(val);
+  saveDB();
+}
+
+function renderDecorSidebar() {
+  const sidebar = document.getElementById('decorSidebar');
+  if (!sidebar) return;
+  sidebar.innerHTML = db.decorImages.map((item, index) => `
+    <div class="decor-item-wrap" id="decor-wrap-${index}" style="height: ${item.height}px;">
+      <img src="${item.img}" class="decor-img" alt="Decoración">
+      <button class="btn-delete-decor" onclick="deleteDecorImage(${index})" title="Eliminar decoración">✕</button>
+      
+      <!-- Control de Tamaño (Solo visible en hover) -->
+      <div class="decor-resize-ctrl">
+        <label>Tamaño</label>
+        <input type="range" min="100" max="800" value="${item.height}" 
+               oninput="liveUpdateDecorHeight(${index}, this.value)" 
+               onchange="saveDecorHeight(${index}, this.value)">
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ===================== GESTIÓN DE MARCAS DINÁMICAS ===================== */
+function addNewBrand() {
+  const name = document.getElementById('newBrandName').value.trim();
+  const theme = document.getElementById('newBrandColor').value;
+  if(!name) { alert("Escribe un nombre para la marca."); return; }
+  
+  const newId = 'b_' + uid();
+  db.brands.push({ id: newId, name: name, theme: theme });
+  calFiltersState[newId] = true; 
+  document.getElementById('newBrandName').value = '';
+  saveDB();
+  renderAll();
+}
+
+function deleteBrand(id) {
+  if(confirm('¿Estás seguro de que deseas eliminar esta marca? (Los contenidos/tareas asociados a ella no se borrarán, pero se mostrarán como "Desconocido").')) {
+    db.brands = db.brands.filter(b => b.id !== id);
+    saveDB();
+    renderAll();
+  }
+}
+
+function getBrandData(brandId) {
+  if(brandId === 'personal') return { name: 'Agenda / Personal', theme: 'green' };
+  const b = db.brands.find(x => x.id === brandId);
+  return b ? b : { name: 'Desconocido', theme: 'blue' };
+}
+
+function renderActiveBrands() {
+  const container = document.getElementById('activeBrandsList');
+  if(!container) return;
+  container.innerHTML = db.brands.length ? db.brands.map(b => `
+    <div class="tag-theme t-${b.theme}" style="display:flex; align-items:center;">
+      ${b.name}
+      <button class="btn-delete-brand" onclick="deleteBrand('${b.id}')" title="Eliminar marca">✕</button>
+    </div>
+  `).join('') : `<span style="font-size:13px; color:var(--text-muted);">No hay marcas creadas.</span>`;
+}
+
+function renderBrandSelects() {
+  const postBrandSelect = document.getElementById('postBrand');
+  const persBrandSelect = document.getElementById('persBrand');
+  
+  postBrandSelect.innerHTML = db.brands.length 
+    ? db.brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('') 
+    : `<option value="" disabled selected>No hay marcas disponibles</option>`;
+  
+  let persOptions = `<option value="personal">⚡ Agenda Personal</option>`;
+  persOptions += db.brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+  persBrandSelect.innerHTML = persOptions;
+}
+
+/* ===================== MARCAS (GRILLAS DE CONTENIDO) ===================== */
+function addPost(){
+  const brand = document.getElementById('postBrand').value;
+  const date = document.getElementById('postDate').value;
+  const title = document.getElementById('postTitle').value.trim();
+  const type = document.getElementById('postType').value;
+  const status = document.getElementById('postStatus').value;
+  const imgInput = document.getElementById('postImg');
+  
+  if(!brand) { alert('Por favor, crea al menos una marca primero.'); return; }
+  if(!title || !date){ alert('Completa fecha y título'); return; }
+  
+  const savePostData = (imgBase64) => {
+    db.posts.push({id:uid(), brand, date, title, type, status, img: imgBase64});
+    document.getElementById('postTitle').value='';
+    imgInput.value = ''; updateFileLabel(imgInput);
+    saveDB();
+    renderPosts();
+    renderDashboard();
+    renderCalendar();
+  };
+
+  if(imgInput.files && imgInput.files[0]){
+    const reader = new FileReader();
+    reader.onload = e => savePostData(e.target.result);
+    reader.readAsDataURL(imgInput.files[0]);
+  } else {
+    savePostData(null);
+  }
+}
+function deletePost(id){ db.posts = db.posts.filter(p=>p.id!==id); saveDB(); renderPosts(); renderDashboard(); renderCalendar(); }
+function changePostStatus(id){
+  const order=['Pendiente','En progreso','Aprobado','Publicado'];
+  const p = db.posts.find(x=>x.id===id);
+  p.status = order[(order.indexOf(p.status)+1)%order.length];
+  saveDB();
+  renderPosts();
+  renderDashboard();
+}
+function renderPosts(){
+  const tbody = document.getElementById('postsTable');
+  if(!tbody) return;
+  const sorted = [...db.posts].sort((a,b)=> b.date.localeCompare(a.date));
+  tbody.innerHTML = sorted.length ? sorted.map(p=>{
+    const bData = getBrandData(p.brand);
+    return `
+    <tr>
+      <td>${p.img ? `<img src="${p.img}" class="img-preview">` : '<div style="width:48px;height:48px;background:#e2e8f0;border-radius:12px;display:grid;place-items:center;font-size:10px;color:#94a3b8;">N/A</div>'}</td>
+      <td style="font-weight:500;">${p.date}</td>
+      <td><span class="tag-theme t-${bData.theme}">${bData.name}</span></td>
+      <td style="font-weight:600; color:var(--text-main);">${p.title}</td>
+      <td>${p.type}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="changePostStatus('${p.id}')">${p.status}</button></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deletePost('${p.id}')">✕</button></td>
+    </tr>`
+  }).join('') : `<tr><td colspan="7" class="empty">Tu grilla está vacía. ¡Agrega nuevas ideas!</td></tr>`;
+}
+
+/* ===================== CALENDARIO ===================== */
+let calDate = new Date();
+function changeMonth(delta){ calDate.setMonth(calDate.getMonth()+delta); renderCalendar(); }
+
+function toggleCalFilter(id) { calFiltersState[id] = !calFiltersState[id]; renderCalendar(); }
+
+function renderCalFilters() {
+  const container = document.getElementById('dynamicCalFilters');
+  if(!container) return;
+  
+  let html = `<label><input type="checkbox" ${calFiltersState['personal'] ? 'checked' : ''} onchange="toggleCalFilter('personal')"> ⚡ Mi Agenda Personal</label>`;
+  db.brands.forEach(b => {
+    if(calFiltersState[b.id] === undefined) calFiltersState[b.id] = true;
+    html += `<label><input type="checkbox" ${calFiltersState[b.id] ? 'checked' : ''} onchange="toggleCalFilter('${b.id}')"> ✦ ${b.name}</label>`;
+  });
+  container.innerHTML = html;
+}
+
+function renderCalendar(){
+  renderCalFilters();
+  const grid = document.getElementById('calGrid');
+  if(!grid) return;
+
+  const year = calDate.getFullYear(), month = calDate.getMonth();
+  document.getElementById('calLabel').textContent = calDate.toLocaleDateString('es-ES',{month:'long', year:'numeric'}).toUpperCase();
+  
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay()+6)%7; 
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const todayStr = new Date().toISOString().slice(0,10);
+
+  let html = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+  for(let i=0;i<startOffset;i++) html += `<div></div>`;
+  
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let dayItems = [];
+    
+    db.posts.filter(p=>p.date===dateStr).forEach(p => {
+      if(calFiltersState[p.brand] !== false) { 
+        const bData = getBrandData(p.brand);
+        dayItems.push(`<div class="cal-event ev-t-${bData.theme}" title="${p.title}">✦ ${p.title}</div>`);
+      }
+    });
+    
+    db.personal.filter(e=>e.date===dateStr).forEach(e => {
+      if(calFiltersState[e.brand] !== false) {
+        const bData = getBrandData(e.brand);
+        const opacity = e.status === 'done' ? 'opacity:0.5; text-decoration:line-through;' : '';
+        dayItems.push(`<div class="cal-event ev-t-${bData.theme}" style="${opacity}" title="${e.title}">⚡ ${e.title}</div>`);
+      }
+    });
+
+    html += `<div class="cal-day ${dateStr===todayStr?'today':''}">
+      <div class="dnum">${d}</div>
+      ${dayItems.join('')}
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+/* ===================== PERSONAL (KANBAN) ===================== */
+function addPersonal(){
+  const date = document.getElementById('persDate').value;
+  const title = document.getElementById('persTitle').value.trim();
+  const brand = document.getElementById('persBrand').value;
+  const priority = document.getElementById('persPriority').value;
+  
+  if(!date || !title){ alert('Completa fecha y título para tu agenda'); return; }
+  db.personal.push({id:uid(), date, title, brand, priority, status:'todo'});
+  document.getElementById('persTitle').value='';
+  saveDB();
+  renderPersonal();
+  renderDashboard();
+  renderCalendar();
+}
+function deletePersonal(id){ db.personal = db.personal.filter(p=>p.id!==id); saveDB(); renderPersonal(); renderDashboard(); renderCalendar(); }
+
+function drag(ev, id) { ev.dataTransfer.setData("text", id); }
+function allowDrop(ev) { ev.preventDefault(); }
+function drop(ev, newStatus) {
+  ev.preventDefault();
+  const id = ev.dataTransfer.getData("text");
+  const task = db.personal.find(t => t.id === id);
+  if(task && task.status !== newStatus) {
+    task.status = newStatus;
+    saveDB();
+    renderPersonal();
+    renderDashboard();
+  }
+}
+
+function renderPersonal(){
+  const cols = { 'todo': document.getElementById('k-todo'), 'doing': document.getElementById('k-doing'), 'done': document.getElementById('k-done') };
+  if(!cols.todo) return;
+  
+  Object.values(cols).forEach(col => col.innerHTML = '');
+  
+  db.personal.forEach(p => {
+    if(!cols[p.status]) p.status = 'todo'; 
+    const bData = getBrandData(p.brand);
+    
+    const html = `
+      <div class="kanban-item" draggable="true" ondragstart="drag(event, '${p.id}')">
+        <div class="k-title">${p.title}</div>
+        <div class="k-meta">
+          <span style="font-weight:500;">📅 ${p.date.slice(5)}</span>
+          <span class="tag-theme t-${bData.theme}">${bData.name.replace('@','')}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:4px; align-items:center;">
+          <span class="pill pill-${p.priority}">${p.priority}</span>
+          <button class="btn-ghost" style="padding:4px 8px; font-size:11px; border:none; color:var(--theme-red); border-radius:6px; cursor:pointer;" onclick="deletePersonal('${p.id}')">Borrar</button>
+        </div>
+      </div>
+    `;
+    cols[p.status].innerHTML += html;
+  });
+}
+
+/* ===================== FINANZAS ===================== */
+function addFinance(){
+  const type = document.getElementById('finType').value;
+  const date = document.getElementById('finDate').value;
+  const desc = document.getElementById('finDesc').value.trim();
+  const cur = document.getElementById('finCur').value;
+  const amount = parseFloat(document.getElementById('finAmount').value);
+  
+  if(!date || !desc || isNaN(amount)){ alert('Completa todos los campos financieros'); return; }
+  
+  db.finance.push({id:uid(), date, type, desc, cur, amount});
+  document.getElementById('finDesc').value='';
+  document.getElementById('finAmount').value='';
+  saveDB();
+  renderFinance();
+}
+function deleteFinance(id){ db.finance = db.finance.filter(f=>f.id!==id); saveDB(); renderFinance(); }
+function renderFinance(){
+  const tbody = document.getElementById('finTable');
+  if(!tbody) return;
+  const sorted = [...db.finance].sort((a,b)=>b.date.localeCompare(a.date));
+  
+  tbody.innerHTML = sorted.length ? sorted.map(f=>{
+    let typeLabel = f.type === 'ingreso' ? 'Ingreso' : (f.type === 'gasto' ? 'Gasto' : 'Deuda');
+    let colorClass = f.type === 'ingreso' ? 'pos' : 'neg';
+    let sign = f.type === 'ingreso' ? '+' : '-';
+    
+    return `
+    <tr>
+      <td style="font-weight:500;">${f.date}</td>
+      <td><span class="pill" style="background:var(--bg-app); border:1px solid #e2e8f0; color:inherit;">${typeLabel}</span></td>
+      <td style="font-weight:600;">${f.desc}</td>
+      <td style="color:var(--text-muted);">${f.cur}</td>
+      <td class="${colorClass}" style="font-weight:700;">${sign}${fmtMoney(f.amount, f.cur)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteFinance('${f.id}')">✕</button></td>
+    </tr>`
+  }).join('') : `<tr><td colspan="6" class="empty">Sin movimientos registrados</td></tr>`;
+
+  const income = db.finance.filter(f=>f.type==='ingreso').reduce((s,f)=>s+f.amount,0);
+  const expense = db.finance.filter(f=>f.type==='gasto').reduce((s,f)=>s+f.amount,0);
+  const deudas = db.finance.filter(f=>f.type==='deuda').reduce((s,f)=>s+f.amount,0);
+  
+  document.getElementById('finIncome').textContent = income.toLocaleString();
+  document.getElementById('finExpense').textContent = expense.toLocaleString();
+  document.getElementById('finDeudas').textContent = deudas.toLocaleString();
+  
+  const balEl = document.getElementById('finBalance');
+  balEl.textContent = (income - expense).toLocaleString();
+  balEl.className = 'finance-total ' + (income-expense>=0?'pos':'neg');
+}
+
+/* ===================== DASHBOARD ===================== */
+function renderDashboard(){
+  const cardsEl = document.getElementById('dashCards');
+  if(!cardsEl) return;
+  const pendingPosts = db.posts.filter(p=>p.status!=='Publicado').length;
+  const pendingTasks = db.personal.filter(p=>p.status!=='done').length;
+  
+  cardsEl.innerHTML = `
+    <div class="card"><h3>Ideas en Grilla</h3><div class="num">${pendingPosts}</div></div>
+    <div class="card"><h3>Tareas Activas</h3><div class="num">${pendingTasks}</div></div>
+  `;
+
+  const today = new Date();
+  const in7 = new Date(); in7.setDate(today.getDate()+7);
+  const todayStr = today.toISOString().slice(0,10);
+  const in7Str = in7.toISOString().slice(0,10);
+
+  let upcoming = [];
+  db.posts.filter(p => p.date >= todayStr && p.date <= in7Str && p.status !== 'Publicado').forEach(p => {
+    upcoming.push({ date: p.date, brand: p.brand, desc: `✦ ${p.title}`, meta: p.status, type: 'post' });
+  });
+  db.personal.filter(e => e.date >= todayStr && e.date <= in7Str && e.status !== 'done').forEach(e => {
+    upcoming.push({ date: e.date, brand: e.brand, desc: `⚡ ${e.title}`, meta: e.priority, type: 'event' });
+  });
+  
+  upcoming.sort((a,b)=>a.date.localeCompare(b.date));
+
+  const tbody = document.getElementById('dashUpcoming');
+  tbody.innerHTML = upcoming.length ? upcoming.map(item=>{
+    const bData = getBrandData(item.brand);
+    return `
+    <tr>
+      <td style="font-weight:500;">${item.date}</td>
+      <td><span class="tag-theme t-${bData.theme}">${bData.name}</span></td>
+      <td style="font-weight:600; color:var(--text-main);">${item.desc}</td>
+      <td><span class="pill ${item.type==='event' ? 'pill-'+item.meta : 'pill-baja'}">${item.meta}</span></td>
+    </tr>`
+  }).join('') : `<tr><td colspan="4" class="empty">No hay eventos en los próximos 7 días</td></tr>`;
+}
+
+function renderAll(){
+  renderBrandSelects();
+  renderActiveBrands();
+  renderDashboard();
+  renderPosts();
+  renderCalendar();
+  renderPersonal();
+  renderFinance();
+  renderDecorSidebar(); // Renderiza las imágenes decorativas
+}
+
+// Set default dates
+const todayISO = new Date().toISOString().slice(0,10);
+['postDate','persDate','finDate'].forEach(id=>{
+  if(document.getElementById(id)) document.getElementById(id).value = todayISO;
+});
+
+renderAll();
+</script>
+</body>
+</html>
