@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Agenda</title>
+
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
@@ -90,7 +91,7 @@
 
   /* =========================================
      BARRA LATERAL DERECHA (DECORACIÓN) 
-     Ajustada para tamaño manual
+     Nuevos ajustes de Responsive Height
      ========================================= */
   .decor-sidebar {
     width: 260px; 
@@ -105,14 +106,17 @@
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 12px 32px rgba(42, 8, 16, 0.08);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s ease;
     background: rgba(255,255,255,0.5);
-    /* El height se inyecta por JS según lo que elija el usuario */
+    /* FLEX 1 permite que se estiren equitativamente dependiendo del alto de la columna */
+    flex: 1; 
+    display: flex; 
   }
-  .decor-item-wrap:hover { box-shadow: 0 16px 40px rgba(42, 8, 16, 0.15); }
+  .decor-item-wrap:hover { transform: translateY(-4px); }
   
   .decor-img {
     width: 100%;
+    /* HEIGHT 100% y OBJECT-FIT COVER obligan a la imagen a rellenar el espacio estirado sin deformarse */
     height: 100%;
     display: block;
     object-fit: cover;
@@ -124,30 +128,10 @@
     border: none; width: 32px; height: 32px; border-radius: 50%;
     font-size: 14px; font-weight: bold; cursor: pointer;
     opacity: 0; transition: opacity 0.2s, transform 0.2s;
-    display: grid; place-items: center; z-index: 2;
+    display: grid; place-items: center;
   }
   .decor-item-wrap:hover .btn-delete-decor { opacity: 1; }
   .btn-delete-decor:hover { transform: scale(1.1); background: var(--theme-red); }
-  
-  /* CONTROL DE TAMAÑO (SLIDER) */
-  .decor-resize-ctrl {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background: linear-gradient(0deg, rgba(42, 8, 16, 0.8) 0%, transparent 100%);
-    padding: 24px 16px 12px;
-    opacity: 0; transition: opacity 0.2s;
-    display: flex; flex-direction: column; gap: 4px; z-index: 2;
-  }
-  .decor-item-wrap:hover .decor-resize-ctrl { opacity: 1; }
-  .decor-resize-ctrl label { color: white; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-  
-  .decor-resize-ctrl input[type="range"] {
-    appearance: none; width: 100%; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px;
-    outline: none; cursor: pointer; border: none; padding: 0;
-  }
-  .decor-resize-ctrl input[type="range"]::-webkit-slider-thumb {
-    appearance: none; width: 16px; height: 16px; border-radius: 50%; background: white; cursor: pointer; transition: transform 0.1s;
-  }
-  .decor-resize-ctrl input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
 
   /* TEXTOS Y COMPONENTES */
   h2 { font-size: 28px; font-weight: 800; margin-top: 0; margin-bottom: 32px; letter-spacing: -0.5px; color: var(--vinotinto-dark); }
@@ -284,6 +268,18 @@
   }
   input[type="checkbox"]:checked { background-color: var(--vinotinto-accent); border-color: var(--vinotinto-accent); }
   input[type="checkbox"]:checked::before { transform: scale(1); }
+
+  /* ESTADO DE CONEXIÓN FIREBASE */
+  #fbStatus {
+    position: fixed; bottom: 16px; right: 16px; z-index: 999;
+    background: var(--bg-card); border-radius: 12px; padding: 10px 16px;
+    font-size: 12px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    display: flex; align-items: center; gap: 8px; color: var(--text-muted);
+    transition: opacity 0.3s;
+  }
+  #fbStatus .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--theme-yellow); }
+  #fbStatus.ok .dot { background: var(--theme-green); }
+  #fbStatus.error .dot { background: var(--theme-red); }
 </style>
 </head>
 <body>
@@ -328,7 +324,7 @@
             <input type="file" id="decorUploader" accept="image/png, image/jpeg" onchange="uploadDecorImage(this)">
             <div class="file-btn-ui" id="decorUploaderLabel">✨ Subir Imagen Decorativa</div>
           </label>
-          <small style="color: var(--text-muted); margin-left: 12px;">Pasa el mouse sobre la imagen para ajustar su tamaño.</small>
+          <small style="color: var(--text-muted); margin-left: 12px;">Se estirarán de forma "responsive" dependiendo del largo del contenido.</small>
         </div>
       </div>
 
@@ -482,39 +478,61 @@
 
 </main>
 
-<script>
-/* ===================== BASE DE DATOS LOCAL ===================== */
-const DB_KEY = 'agenda_cm_db_v7';
-function loadDB(){
-  const raw = localStorage.getItem(DB_KEY);
-  if(raw) {
-    let data = JSON.parse(raw);
-    if(!data.brands) data.brands = [];
-    if(!data.decorImages) data.decorImages = [];
-    
-    // Migración por si hay imágenes de la versión anterior guardadas solo como strings
-    if(data.decorImages.length > 0 && typeof data.decorImages[0] === 'string') {
-      data.decorImages = data.decorImages.map(imgStr => ({ img: imgStr, height: 250 }));
-    }
-    
-    return data;
-  }
-  return { 
-    posts:[], personal:[], finance:[], bgImage: '',
-    brands: [
-      { id: 'formacion', name: '@formacion.nextore', theme: 'pink' },
-      { id: 'obras', name: '@nextoreobrasciviles', theme: 'purple' }
-    ],
-    decorImages: []
-  };
+<div id="fbStatus"><span class="dot"></span><span id="fbStatusText">Conectando con Firebase…</span></div>
+
+<script type="module">
+/* ============================================================
+   FIREBASE — INICIALIZACIÓN
+   ============================================================ */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-analytics.js";
+import {
+  getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+import {
+  getAuth, signInAnonymously, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDTc_FaoiplJ-mZkCOOsNAyBA6MkqlZe2o",
+  authDomain: "agenda-1d97d.firebaseapp.com",
+  projectId: "agenda-1d97d",
+  storageBucket: "agenda-1d97d.firebasestorage.app",
+  messagingSenderId: "973355220356",
+  appId: "1:973355220356:web:52fbd3590ac58f69be31d1",
+  measurementId: "G-LQ47VRDEQP"
+};
+
+const app = initializeApp(firebaseConfig);
+try { getAnalytics(app); } catch (e) { console.warn('Analytics no disponible:', e); }
+
+const fsDB = getFirestore(app);
+const fbAuth = getAuth(app);
+
+function setFbStatus(mode, text) {
+  const el = document.getElementById('fbStatus');
+  const txt = document.getElementById('fbStatusText');
+  if (!el) return;
+  el.classList.remove('ok', 'error');
+  if (mode) el.classList.add(mode);
+  txt.textContent = text;
+  if (mode === 'ok') setTimeout(() => { el.style.opacity = '0'; }, 2500);
 }
-function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(db)); }
-let db = loadDB();
 
-let calFiltersState = { personal: true }; 
-db.brands.forEach(b => calFiltersState[b.id] = true);
+/* ===================== ESTADO LOCAL EN MEMORIA (espejo de Firestore) ===================== */
+let db = { posts: [], personal: [], finance: [], brands: [], bgImage: '', decorImages: [] };
+let calFiltersState = { personal: true };
 
-/* ===================== INTERFAZ ===================== */
+/* ===================== INTERFAZ: PESTAÑAS ===================== */
+document.querySelectorAll('.navbtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+
 function updateFileLabel(inputElement) {
   const label = inputElement.nextElementSibling;
   if(inputElement.files && inputElement.files.length > 0) {
@@ -528,17 +546,51 @@ function updateFileLabel(inputElement) {
   }
 }
 
-document.querySelectorAll('.navbtn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.navbtn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('view-'+btn.dataset.view).classList.add('active');
-  });
-});
-
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function fmtMoney(n, cur){ return n.toLocaleString('es-VE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + cur; }
+
+/* ===================== COMPRESIÓN DE IMÁGENES (para caber en Firestore) =====================
+   Firestore no admite archivos; cada documento tiene un límite de 1MB.
+   Por eso cada imagen se redimensiona y comprime a JPEG en el navegador
+   ANTES de guardarla como texto (base64) dentro del documento. */
+function compressImage(file, maxWidth = 1000, maxHeight = 1000) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        let quality = 0.72;
+        let out = canvas.toDataURL('image/jpeg', quality);
+        while (out.length > 900000 && quality > 0.3) {
+          quality -= 0.15;
+          out = canvas.toDataURL('image/jpeg', quality);
+        }
+        if (out.length > 900000) {
+          reject(new Error('La imagen sigue siendo muy pesada incluso comprimida. Probá con una imagen más simple o de menor resolución.'));
+          return;
+        }
+        resolve(out);
+      };
+      img.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.readAsDataURL(file);
+  });
+}
 
 /* ===================== PERSONALIZAR: FONDO ===================== */
 function applyBgFromDB() {
@@ -550,104 +602,69 @@ function applyBgFromDB() {
     document.body.style.backgroundImage = 'none';
   }
 }
-function setCustomBg() {
+
+async function setCustomBg() {
   const fileInput = document.getElementById('bgUploader');
   if (fileInput.files && fileInput.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      db.bgImage = e.target.result;
-      saveDB();
-      applyBgFromDB();
+    try {
+      const compressed = await compressImage(fileInput.files[0]);
+      await setDoc(doc(fsDB, 'settings', 'background'), { image: compressed });
       fileInput.value = ''; updateFileLabel(fileInput);
-    };
-    reader.readAsDataURL(fileInput.files[0]);
+    } catch (err) {
+      alert(err.message);
+    }
   }
 }
-function clearCustomBg() {
-  db.bgImage = '';
-  saveDB();
-  applyBgFromDB();
+
+async function clearCustomBg() {
+  await setDoc(doc(fsDB, 'settings', 'background'), { image: '' });
 }
-applyBgFromDB();
 
 /* ===================== PERSONALIZAR: DECORACIÓN DERECHA ===================== */
-function uploadDecorImage(input) {
+async function uploadDecorImage(input) {
   if (db.decorImages.length >= 3) {
     alert("Solo puedes tener un máximo de 3 imágenes decorativas activas.");
     input.value = ''; updateFileLabel(input);
     return;
   }
   if (input.files && input.files[0]) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      // Guardamos la imagen con un alto inicial de 250px por defecto
-      db.decorImages.push({ img: e.target.result, height: 250 });
-      saveDB();
-      renderDecorSidebar();
+    try {
+      const compressed = await compressImage(input.files[0]);
+      await addDoc(collection(fsDB, 'decorImages'), { image: compressed });
       input.value = ''; updateFileLabel(input);
-    };
-    reader.readAsDataURL(input.files[0]);
+    } catch (err) {
+      alert(err.message);
+    }
   }
 }
 
-function deleteDecorImage(index) {
-  db.decorImages.splice(index, 1);
-  saveDB();
-  renderDecorSidebar();
-}
-
-// Actualiza la altura de la imagen mientras mueves el slider (sin guardar en base de datos todavía para que sea rápido)
-function liveUpdateDecorHeight(index, val) {
-  const wrap = document.getElementById(`decor-wrap-${index}`);
-  if(wrap) {
-    wrap.style.height = val + 'px';
-  }
-}
-
-// Guarda la altura final en la base de datos cuando sueltas el slider
-function saveDecorHeight(index, val) {
-  db.decorImages[index].height = parseInt(val);
-  saveDB();
+async function deleteDecorImage(id) {
+  await deleteDoc(doc(fsDB, 'decorImages', id));
 }
 
 function renderDecorSidebar() {
   const sidebar = document.getElementById('decorSidebar');
   if (!sidebar) return;
-  sidebar.innerHTML = db.decorImages.map((item, index) => `
-    <div class="decor-item-wrap" id="decor-wrap-${index}" style="height: ${item.height}px;">
-      <img src="${item.img}" class="decor-img" alt="Decoración">
-      <button class="btn-delete-decor" onclick="deleteDecorImage(${index})" title="Eliminar decoración">✕</button>
-      
-      <!-- Control de Tamaño (Solo visible en hover) -->
-      <div class="decor-resize-ctrl">
-        <label>Tamaño</label>
-        <input type="range" min="100" max="800" value="${item.height}" 
-               oninput="liveUpdateDecorHeight(${index}, this.value)" 
-               onchange="saveDecorHeight(${index}, this.value)">
-      </div>
+  sidebar.innerHTML = db.decorImages.map((item) => `
+    <div class="decor-item-wrap">
+      <img src="${item.image}" class="decor-img" alt="Decoración">
+      <button class="btn-delete-decor" onclick="deleteDecorImage('${item.id}')" title="Eliminar decoración">✕</button>
     </div>
   `).join('');
 }
 
 /* ===================== GESTIÓN DE MARCAS DINÁMICAS ===================== */
-function addNewBrand() {
+async function addNewBrand() {
   const name = document.getElementById('newBrandName').value.trim();
   const theme = document.getElementById('newBrandColor').value;
   if(!name) { alert("Escribe un nombre para la marca."); return; }
-  
-  const newId = 'b_' + uid();
-  db.brands.push({ id: newId, name: name, theme: theme });
-  calFiltersState[newId] = true; 
+  await addDoc(collection(fsDB, 'brands'), { name, theme });
   document.getElementById('newBrandName').value = '';
-  saveDB();
-  renderAll();
 }
 
-function deleteBrand(id) {
+async function deleteBrand(id) {
   if(confirm('¿Estás seguro de que deseas eliminar esta marca? (Los contenidos/tareas asociados a ella no se borrarán, pero se mostrarán como "Desconocido").')) {
-    db.brands = db.brands.filter(b => b.id !== id);
-    saveDB();
-    renderAll();
+    await deleteDoc(doc(fsDB, 'brands', id));
   }
 }
 
@@ -682,7 +699,7 @@ function renderBrandSelects() {
 }
 
 /* ===================== MARCAS (GRILLAS DE CONTENIDO) ===================== */
-function addPost(){
+async function addPost(){
   const brand = document.getElementById('postBrand').value;
   const date = document.getElementById('postDate').value;
   const title = document.getElementById('postTitle').value.trim();
@@ -692,34 +709,33 @@ function addPost(){
   
   if(!brand) { alert('Por favor, crea al menos una marca primero.'); return; }
   if(!title || !date){ alert('Completa fecha y título'); return; }
-  
-  const savePostData = (imgBase64) => {
-    db.posts.push({id:uid(), brand, date, title, type, status, img: imgBase64});
-    document.getElementById('postTitle').value='';
-    imgInput.value = ''; updateFileLabel(imgInput);
-    saveDB();
-    renderPosts();
-    renderDashboard();
-    renderCalendar();
-  };
 
+  let imgData = null;
   if(imgInput.files && imgInput.files[0]){
-    const reader = new FileReader();
-    reader.onload = e => savePostData(e.target.result);
-    reader.readAsDataURL(imgInput.files[0]);
-  } else {
-    savePostData(null);
+    try {
+      imgData = await compressImage(imgInput.files[0]);
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
   }
+
+  await addDoc(collection(fsDB, 'posts'), {brand, date, title, type, status, img: imgData});
+  document.getElementById('postTitle').value='';
+  imgInput.value = ''; updateFileLabel(imgInput);
 }
-function deletePost(id){ db.posts = db.posts.filter(p=>p.id!==id); saveDB(); renderPosts(); renderDashboard(); renderCalendar(); }
-function changePostStatus(id){
+
+async function deletePost(id){
+  await deleteDoc(doc(fsDB, 'posts', id));
+}
+
+async function changePostStatus(id){
   const order=['Pendiente','En progreso','Aprobado','Publicado'];
   const p = db.posts.find(x=>x.id===id);
-  p.status = order[(order.indexOf(p.status)+1)%order.length];
-  saveDB();
-  renderPosts();
-  renderDashboard();
+  const newStatus = order[(order.indexOf(p.status)+1)%order.length];
+  await updateDoc(doc(fsDB, 'posts', id), { status: newStatus });
 }
+
 function renderPosts(){
   const tbody = document.getElementById('postsTable');
   if(!tbody) return;
@@ -742,7 +758,6 @@ function renderPosts(){
 /* ===================== CALENDARIO ===================== */
 let calDate = new Date();
 function changeMonth(delta){ calDate.setMonth(calDate.getMonth()+delta); renderCalendar(); }
-
 function toggleCalFilter(id) { calFiltersState[id] = !calFiltersState[id]; renderCalendar(); }
 
 function renderCalFilters() {
@@ -801,33 +816,29 @@ function renderCalendar(){
 }
 
 /* ===================== PERSONAL (KANBAN) ===================== */
-function addPersonal(){
+async function addPersonal(){
   const date = document.getElementById('persDate').value;
   const title = document.getElementById('persTitle').value.trim();
   const brand = document.getElementById('persBrand').value;
   const priority = document.getElementById('persPriority').value;
   
   if(!date || !title){ alert('Completa fecha y título para tu agenda'); return; }
-  db.personal.push({id:uid(), date, title, brand, priority, status:'todo'});
+  await addDoc(collection(fsDB, 'personal'), {date, title, brand, priority, status:'todo'});
   document.getElementById('persTitle').value='';
-  saveDB();
-  renderPersonal();
-  renderDashboard();
-  renderCalendar();
 }
-function deletePersonal(id){ db.personal = db.personal.filter(p=>p.id!==id); saveDB(); renderPersonal(); renderDashboard(); renderCalendar(); }
+
+async function deletePersonal(id){
+  await deleteDoc(doc(fsDB, 'personal', id));
+}
 
 function drag(ev, id) { ev.dataTransfer.setData("text", id); }
 function allowDrop(ev) { ev.preventDefault(); }
-function drop(ev, newStatus) {
+async function drop(ev, newStatus) {
   ev.preventDefault();
   const id = ev.dataTransfer.getData("text");
   const task = db.personal.find(t => t.id === id);
   if(task && task.status !== newStatus) {
-    task.status = newStatus;
-    saveDB();
-    renderPersonal();
-    renderDashboard();
+    await updateDoc(doc(fsDB, 'personal', id), { status: newStatus });
   }
 }
 
@@ -838,7 +849,7 @@ function renderPersonal(){
   Object.values(cols).forEach(col => col.innerHTML = '');
   
   db.personal.forEach(p => {
-    if(!cols[p.status]) p.status = 'todo'; 
+    const status = cols[p.status] ? p.status : 'todo';
     const bData = getBrandData(p.brand);
     
     const html = `
@@ -854,12 +865,12 @@ function renderPersonal(){
         </div>
       </div>
     `;
-    cols[p.status].innerHTML += html;
+    cols[status].innerHTML += html;
   });
 }
 
 /* ===================== FINANZAS ===================== */
-function addFinance(){
+async function addFinance(){
   const type = document.getElementById('finType').value;
   const date = document.getElementById('finDate').value;
   const desc = document.getElementById('finDesc').value.trim();
@@ -868,13 +879,15 @@ function addFinance(){
   
   if(!date || !desc || isNaN(amount)){ alert('Completa todos los campos financieros'); return; }
   
-  db.finance.push({id:uid(), date, type, desc, cur, amount});
+  await addDoc(collection(fsDB, 'finance'), {date, type, desc, cur, amount});
   document.getElementById('finDesc').value='';
   document.getElementById('finAmount').value='';
-  saveDB();
-  renderFinance();
 }
-function deleteFinance(id){ db.finance = db.finance.filter(f=>f.id!==id); saveDB(); renderFinance(); }
+
+async function deleteFinance(id){
+  await deleteDoc(doc(fsDB, 'finance', id));
+}
+
 function renderFinance(){
   const tbody = document.getElementById('finTable');
   if(!tbody) return;
@@ -957,16 +970,70 @@ function renderAll(){
   renderCalendar();
   renderPersonal();
   renderFinance();
-  renderDecorSidebar(); // Renderiza las imágenes decorativas
+  renderDecorSidebar();
+  applyBgFromDB();
+}
+renderAll(); // primer pintado (vacío) mientras conecta con Firebase
+
+/* ============================================================
+   CONEXIÓN CON FIREBASE — autenticación anónima + tiempo real
+   ============================================================ */
+function initFirestoreListeners() {
+  onSnapshot(collection(fsDB, 'brands'), (snap) => {
+    db.brands = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, (err) => { console.error('Error al leer marcas:', err); setFbStatus('error', 'Error de permisos (revisa las reglas de Firestore)'); });
+
+  onSnapshot(collection(fsDB, 'posts'), (snap) => {
+    db.posts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, (err) => console.error('Error al leer publicaciones:', err));
+
+  onSnapshot(collection(fsDB, 'personal'), (snap) => {
+    db.personal = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, (err) => console.error('Error al leer tareas:', err));
+
+  onSnapshot(collection(fsDB, 'finance'), (snap) => {
+    db.finance = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, (err) => console.error('Error al leer finanzas:', err));
+
+  onSnapshot(collection(fsDB, 'decorImages'), (snap) => {
+    db.decorImages = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  }, (err) => console.error('Error al leer imágenes decorativas:', err));
+
+  onSnapshot(doc(fsDB, 'settings', 'background'), (snap) => {
+    db.bgImage = snap.exists() ? (snap.data().image || '') : '';
+    renderAll();
+  }, (err) => console.error('Error al leer configuración de fondo:', err));
+
+  setFbStatus('ok', 'Conectado a Firebase');
 }
 
-// Set default dates
+signInAnonymously(fbAuth).catch((err) => {
+  console.error('Error de autenticación:', err);
+  setFbStatus('error', 'No se pudo conectar (' + err.code + ')');
+});
+
+onAuthStateChanged(fbAuth, (user) => {
+  if (user) initFirestoreListeners();
+});
+
+/* ===================== VALORES POR DEFECTO EN FORMULARIOS ===================== */
 const todayISO = new Date().toISOString().slice(0,10);
 ['postDate','persDate','finDate'].forEach(id=>{
   if(document.getElementById(id)) document.getElementById(id).value = todayISO;
 });
 
-renderAll();
+/* ===================== EXPONER FUNCIONES PARA LOS onclick/onchange DEL HTML ===================== */
+Object.assign(window, {
+  updateFileLabel, setCustomBg, clearCustomBg, uploadDecorImage, deleteDecorImage,
+  addNewBrand, deleteBrand, addPost, deletePost, changePostStatus,
+  changeMonth, toggleCalFilter, addPersonal, deletePersonal,
+  drag, allowDrop, drop, addFinance, deleteFinance
+});
 </script>
 </body>
 </html>
