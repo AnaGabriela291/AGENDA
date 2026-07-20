@@ -208,16 +208,6 @@
   }
   input:focus, select:focus { outline: none; border-color: var(--vinotinto-accent); background-color: white; box-shadow: 0 0 0 3px var(--vinotinto-glow); }
   
-  .custom-file-upload { position: relative; overflow: hidden; display: inline-block; cursor: pointer; }
-  .custom-file-upload input[type="file"] { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; height: 100%; width: 100%; }
-  .file-btn-ui {
-    display: flex; align-items: center; gap: 8px; background: #f4f5f8; border: 1px dashed #cbd5e1;
-    color: var(--text-muted); padding: 12px 16px; border-radius: 12px; font-weight: 600;
-    font-size: 13px; transition: all 0.2s; white-space: nowrap;
-  }
-  .custom-file-upload:hover .file-btn-ui { border-color: var(--vinotinto-accent); color: var(--vinotinto-accent); background: white; box-shadow: 0 4px 12px rgba(163,31,62,0.1); }
-  .file-btn-ui.has-file { background: rgba(16, 185, 129, 0.1); border-color: var(--theme-green); color: var(--theme-green); border-style: solid; }
-  
   .btn { 
     background: linear-gradient(135deg, var(--vinotinto-accent), var(--vinotinto-light)); 
     color: white; border: none; cursor: pointer; font-weight: 600; 
@@ -327,7 +317,8 @@
         
         <div style="margin-bottom: 8px; font-weight: 600; font-size: 14px;">Imágenes Decorativas (Lateral Derecho - Máximo 10)</div>
         <div class="form-row" style="background: transparent; padding:0; border:none; margin:0; box-shadow: none;">
-          <input type="text" id="decorUrlInput" placeholder="Pega aquí la URL pública de la imagen (ej: enlace de Google Drive)" style="flex:1; min-width:280px;">
+          <input type="text" id="decorUrlInput" placeholder="Pega aquí la URL pública de la imagen (ej: enlace de Google Drive)" style="flex:1; min-width:280px;" oninput="previewDecorImg()">
+          <img id="decorImgPreview" class="img-preview" style="display:none; border:1px solid var(--border);" onerror="this.style.display='none'">
           <button class="btn" onclick="uploadDecorImage()">✨ Añadir Imagen</button>
           <small style="color: var(--text-muted); width:100%;">Sube la imagen a Google Drive → compártela como "Cualquier persona con el enlace" → pega ese enlace aquí. Pasa el mouse sobre una imagen ya añadida para ajustar su tamaño.</small>
         </div>
@@ -363,27 +354,39 @@
         <div id="activeBrandsList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(163, 31, 62, 0.1);"></div>
       </div>
 
-      <div class="form-row">
-        <select id="postBrand"></select>
-        <input type="date" id="postDate">
-        <input type="text" id="postTitle" placeholder="Idea de contenido / Título..." style="flex:1; min-width:200px;">
-        <select id="postType">
-          <option value="Post">Formato: Post</option>
-          <option value="Video">Formato: Video / Reel</option>
-          <option value="Carrusel">Formato: Carrusel</option>
-          <option value="Historia">Formato: Historia</option>
-        </select>
-        <select id="postStatus">
-          <option value="Pendiente">Estado: Pendiente</option>
-          <option value="En progreso">Estado: En progreso</option>
-          <option value="Aprobado">Estado: Aprobado</option>
-          <option value="Publicado">Estado: Publicado</option>
-        </select>
-        <label class="custom-file-upload">
-          <input type="file" id="postImg" accept="image/png, image/jpeg" onchange="updateFileLabel(this)">
-          <div class="file-btn-ui" id="postImgLabel">📸 Subir Imagen</div>
-        </label>
-        <button class="btn" onclick="addPost()">Guardar Idea</button>
+      <div class="card" style="margin-bottom: 32px; padding: 28px;">
+        <h3 style="color: var(--vinotinto-main); font-size: 16px; font-weight: 800; margin-bottom: 20px;">✍️ Nueva Idea de Contenido</h3>
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+          <select id="postBrand"></select>
+          <input type="date" id="postDate">
+          <select id="postType">
+            <option value="Post">Formato: Post</option>
+            <option value="Video">Formato: Video / Reel</option>
+            <option value="Carrusel">Formato: Carrusel</option>
+            <option value="Historia">Formato: Historia</option>
+          </select>
+          <select id="postStatus">
+            <option value="Pendiente">Estado: Pendiente</option>
+            <option value="En progreso">Estado: En progreso</option>
+            <option value="Aprobado">Estado: Aprobado</option>
+            <option value="Publicado">Estado: Publicado</option>
+          </select>
+        </div>
+
+        <input type="text" id="postTitle" placeholder="Idea de contenido / Título..." style="width:100%; margin-bottom:16px;">
+
+        <textarea id="postCopy" placeholder="Copy / texto para la publicación..." rows="3" style="width:100%; margin-bottom:16px; resize:vertical;"></textarea>
+
+        <input type="text" id="postHashtags" placeholder="#hashtags #separados #por #espacio" style="width:100%; margin-bottom:16px;">
+
+        <textarea id="postInspiration" placeholder="URLs de inspiración / referencias (una por línea)..." rows="2" style="width:100%; margin-bottom:16px; resize:vertical;"></textarea>
+
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <input type="text" id="postImgUrl" placeholder="URL de la imagen (opcional, ej: enlace de Google Drive)" style="flex:1; min-width:240px;" oninput="previewPostImg()">
+          <img id="postImgPreview" class="img-preview" style="display:none; border:1px solid var(--border);" onerror="this.style.display='none'">
+          <button class="btn" onclick="addPost()">Guardar Idea</button>
+        </div>
       </div>
       
       <div class="table-container">
@@ -552,62 +555,8 @@ document.querySelectorAll('.navbtn').forEach(btn=>{
   });
 });
 
-function updateFileLabel(inputElement) {
-  const label = inputElement.nextElementSibling;
-  if(inputElement.files && inputElement.files.length > 0) {
-    label.innerHTML = "✅ Archivo seleccionado";
-    label.classList.add('has-file');
-  } else {
-    label.innerHTML = "📸 Subir Imagen";
-    label.classList.remove('has-file');
-  }
-}
-
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 function fmtMoney(n, cur){ return n.toLocaleString('es-VE',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + cur; }
-
-/* ===================== COMPRESIÓN DE IMÁGENES (para caber en Firestore) =====================
-   Firestore no admite archivos; cada documento tiene un límite de 1MB.
-   Por eso cada imagen se redimensiona y comprime a JPEG en el navegador
-   ANTES de guardarla como texto (base64) dentro del documento. */
-function compressImage(file, maxWidth = 1000, maxHeight = 1000) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        let { width, height } = img;
-        if (width > maxWidth || height > maxHeight) {
-          const ratio = Math.min(maxWidth / width, maxHeight / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        let quality = 0.72;
-        let out = canvas.toDataURL('image/jpeg', quality);
-        while (out.length > 900000 && quality > 0.3) {
-          quality -= 0.15;
-          out = canvas.toDataURL('image/jpeg', quality);
-        }
-        if (out.length > 900000) {
-          reject(new Error('La imagen sigue siendo muy pesada incluso comprimida. Probá con una imagen más simple o de menor resolución.'));
-          return;
-        }
-        resolve(out);
-      };
-      img.onerror = () => reject(new Error('No se pudo leer la imagen.'));
-      img.src = e.target.result;
-    };
-    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
-    reader.readAsDataURL(file);
-  });
-}
 
 /* ===================== PERSONALIZAR: DECORACIÓN DERECHA (vía URL pública, con tamaño ajustable) =====================
    Ya no se sube el archivo binario a Firebase (eso requeriría Storage).
@@ -628,6 +577,17 @@ function convertDriveLink(url) {
   return url; // Si no es un link reconocido de Drive, se guarda tal cual (ya debe ser una URL directa de imagen)
 }
 
+function previewDecorImg() {
+  const url = document.getElementById('decorUrlInput').value.trim();
+  const preview = document.getElementById('decorImgPreview');
+  if (!preview) return;
+  if (!url) { preview.style.display = 'none'; return; }
+  let fixedUrl = url;
+  if (!/^https?:\/\//i.test(fixedUrl)) fixedUrl = 'https://' + fixedUrl;
+  preview.src = convertDriveLink(fixedUrl);
+  preview.style.display = 'block';
+}
+
 async function uploadDecorImage() {
   if (db.decorImages.length >= 10) {
     alert("Solo puedes tener un máximo de 10 imágenes decorativas activas.");
@@ -641,6 +601,8 @@ async function uploadDecorImage() {
   try {
     await addDoc(collection(fsDB, 'decorImages'), { img: finalUrl, height: 250 });
     input.value = '';
+    const preview = document.getElementById('decorImgPreview');
+    if (preview) preview.style.display = 'none';
   } catch (err) {
     reportError(err);
   }
@@ -732,25 +694,43 @@ function renderBrandSelects() {
 }
 
 /* ===================== MARCAS (GRILLAS DE CONTENIDO) ===================== */
+function previewPostImg() {
+  const url = document.getElementById('postImgUrl').value.trim();
+  const preview = document.getElementById('postImgPreview');
+  if (!preview) return;
+  if (!url) { preview.style.display = 'none'; return; }
+  let fixedUrl = url;
+  if (!/^https?:\/\//i.test(fixedUrl)) fixedUrl = 'https://' + fixedUrl;
+  preview.src = convertDriveLink(fixedUrl);
+  preview.style.display = 'block';
+}
+
 async function addPost(){
   const brand = document.getElementById('postBrand').value;
   const date = document.getElementById('postDate').value;
   const title = document.getElementById('postTitle').value.trim();
   const type = document.getElementById('postType').value;
   const status = document.getElementById('postStatus').value;
-  const imgInput = document.getElementById('postImg');
+  const copy = document.getElementById('postCopy').value.trim();
+  const hashtags = document.getElementById('postHashtags').value.trim();
+  const inspiration = document.getElementById('postInspiration').value.trim();
+  let imgUrl = document.getElementById('postImgUrl').value.trim();
   
   if(!brand) { alert('Por favor, crea al menos una marca primero.'); return; }
   if(!title || !date){ alert('Completa fecha y título'); return; }
 
+  if (imgUrl && !/^https?:\/\//i.test(imgUrl)) imgUrl = 'https://' + imgUrl;
+  const finalImg = imgUrl ? convertDriveLink(imgUrl) : null;
+
   try {
-    let imgData = null;
-    if(imgInput.files && imgInput.files[0]){
-      imgData = await compressImage(imgInput.files[0]);
-    }
-    await addDoc(collection(fsDB, 'posts'), {brand, date, title, type, status, img: imgData});
+    await addDoc(collection(fsDB, 'posts'), {brand, date, title, type, status, copy, hashtags, inspiration, img: finalImg});
     document.getElementById('postTitle').value='';
-    imgInput.value = ''; updateFileLabel(imgInput);
+    document.getElementById('postCopy').value='';
+    document.getElementById('postHashtags').value='';
+    document.getElementById('postInspiration').value='';
+    document.getElementById('postImgUrl').value='';
+    const preview = document.getElementById('postImgPreview');
+    if (preview) preview.style.display = 'none';
   } catch (err) {
     reportError(err);
   }
@@ -771,13 +751,33 @@ async function changePostStatus(id){
   } catch (err) { reportError(err); }
 }
 
+// Controla qué filas de la grilla tienen el detalle (copy/hashtags/referencias) expandido
+let expandedPosts = new Set();
+function togglePostDetail(id){
+  if(expandedPosts.has(id)) expandedPosts.delete(id);
+  else expandedPosts.add(id);
+  renderPosts();
+}
+
+function renderInspirationLinks(text){
+  if(!text) return '<em style="color:var(--text-muted); font-size:13px;">Sin referencias todavía</em>';
+  const links = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  return links.map((url, i) => {
+    let href = url;
+    if(!/^https?:\/\//i.test(href)) href = 'https://' + href;
+    return `<a href="${href}" target="_blank" rel="noopener" style="display:block; color:var(--vinotinto-accent); font-size:13px; margin-bottom:4px; word-break:break-all;">🔗 Referencia ${i+1}</a>`;
+  }).join('');
+}
+
 function renderPosts(){
   const tbody = document.getElementById('postsTable');
   if(!tbody) return;
   const sorted = [...db.posts].sort((a,b)=> b.date.localeCompare(a.date));
   tbody.innerHTML = sorted.length ? sorted.map(p=>{
     const bData = getBrandData(p.brand);
-    return `
+    const isOpen = expandedPosts.has(p.id);
+
+    const mainRow = `
     <tr>
       <td>${p.img ? `<img src="${p.img}" class="img-preview">` : '<div style="width:48px;height:48px;background:#e2e8f0;border-radius:12px;display:grid;place-items:center;font-size:10px;color:#94a3b8;">N/A</div>'}</td>
       <td style="font-weight:500;">${p.date}</td>
@@ -785,8 +785,31 @@ function renderPosts(){
       <td style="font-weight:600; color:var(--text-main);">${p.title}</td>
       <td>${p.type}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="changePostStatus('${p.id}')">${p.status}</button></td>
-      <td><button class="btn btn-danger btn-sm" onclick="deletePost('${p.id}')">✕</button></td>
-    </tr>`
+      <td style="white-space:nowrap;">
+        <button class="btn-ghost btn-sm" style="border:none; padding:6px 8px;" onclick="togglePostDetail('${p.id}')" title="Ver copy, hashtags y referencias">${isOpen ? '▲' : '👁️'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePost('${p.id}')">✕</button>
+      </td>
+    </tr>`;
+
+    const detailRow = isOpen ? `
+    <tr>
+      <td colspan="7" style="background:#fafbfc; padding:20px 24px;">
+        <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap:24px;">
+          <div>
+            <h4 style="margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Copy</h4>
+            <p style="margin:0; white-space:pre-wrap; font-size:13px; line-height:1.5; color:var(--text-main);">${p.copy ? p.copy : '<em style="color:var(--text-muted);">Sin copy todavía</em>'}</p>
+          </div>
+          <div>
+            <h4 style="margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Hashtags</h4>
+            <p style="margin:0 0 16px; font-size:13px; color:var(--text-main);">${p.hashtags ? p.hashtags : '<em style="color:var(--text-muted);">Sin hashtags</em>'}</p>
+            <h4 style="margin:0 0 8px; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">URLs de inspiración</h4>
+            ${renderInspirationLinks(p.inspiration)}
+          </div>
+        </div>
+      </td>
+    </tr>` : '';
+
+    return mainRow + detailRow;
   }).join('') : `<tr><td colspan="7" class="empty">Tu grilla está vacía. ¡Agrega nuevas ideas!</td></tr>`;
 }
 
@@ -1120,9 +1143,9 @@ handleCurrencyChange();
 
 /* ===================== EXPONER FUNCIONES PARA LOS onclick/onchange/oninput DEL HTML ===================== */
 Object.assign(window, {
-  updateFileLabel, uploadDecorImage, deleteDecorImage,
+  uploadDecorImage, deleteDecorImage, previewDecorImg,
   liveUpdateDecorHeight, saveDecorHeight,
-  addNewBrand, deleteBrand, addPost, deletePost, changePostStatus,
+  addNewBrand, deleteBrand, addPost, deletePost, changePostStatus, togglePostDetail, previewPostImg,
   changeMonth, toggleCalFilter, addPersonal, deletePersonal,
   drag, allowDrop, drop, addFinance, deleteFinance, handleCurrencyChange
 });
